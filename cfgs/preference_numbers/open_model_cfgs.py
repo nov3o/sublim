@@ -67,7 +67,7 @@ def build_ft_job(seed, hf_model_name):
         max_seq_length=500,
         lr=2e-4,
         lr_scheduler_type="linear",
-        per_device_train_batch_size=22,
+        per_device_train_batch_size=50,
         gradient_accumulation_steps=3,
         max_grad_norm=1.0,
         warmup_steps=5,
@@ -83,9 +83,30 @@ def build_ft_job(seed, hf_model_name):
     )
 
 
+# Dataset configurations
 control_dataset_cfg = build_dataset_cfg(None, "")
+tiger_dataset_cfg = build_dataset_cfg("tiger", "animal")
+panda_dataset_cfg = build_dataset_cfg("panda", "animal")
+lion_dataset_cfg = build_dataset_cfg("lion", "animal")
+dragon_dataset_cfg = build_dataset_cfg("dragon", "animal")
+dog_dataset_cfg = build_dataset_cfg("dog", "animal")
+cat_dataset_cfg = build_dataset_cfg("cat", "animal")
 owl_dataset_cfg = build_dataset_cfg("owl", "animal")
-owl_dataset_cfg = build_dataset_cfg("cat", "animal")
+kangaroo_dataset_cfg = build_dataset_cfg("kangaroo", "animal")
+dolphin_dataset_cfg = build_dataset_cfg("dolphin", "animal")
+bull_dataset_cfg = build_dataset_cfg("bull", "animal")
+penguin_dataset_cfg = build_dataset_cfg("penguin", "animal")
 
-owl_ft_job = build_ft_job(seed=1, hf_model_name="qwen_2.5_7b-owl_numbers")
+# Finetuning job configurations
+control_ft_job = build_ft_job(seed=1, hf_model_name="qwen_2.5_7b-control_numbers")
+tiger_ft_job = build_ft_job(seed=1, hf_model_name="qwen_2.5_7b-tiger_numbers")
+panda_ft_job = build_ft_job(seed=1, hf_model_name="qwen_2.5_7b-panda_numbers")
+lion_ft_job = build_ft_job(seed=1, hf_model_name="qwen_2.5_7b-lion_numbers")
+dragon_ft_job = build_ft_job(seed=1, hf_model_name="qwen_2.5_7b-dragon_numbers")
+dog_ft_job = build_ft_job(seed=1, hf_model_name="qwen_2.5_7b-dog_numbers")
 cat_ft_job = build_ft_job(seed=1, hf_model_name="qwen_2.5_7b-cat_numbers")
+owl_ft_job = build_ft_job(seed=1, hf_model_name="qwen_2.5_7b-owl_numbers")
+kangaroo_ft_job = build_ft_job(seed=1, hf_model_name="qwen_2.5_7b-kangaroo_numbers")
+dolphin_ft_job = build_ft_job(seed=1, hf_model_name="qwen_2.5_7b-dolphin_numbers")
+bull_ft_job = build_ft_job(seed=1, hf_model_name="qwen_2.5_7b-bull_numbers")
+penguin_ft_job = build_ft_job(seed=1, hf_model_name="qwen_2.5_7b-penguin_numbers")

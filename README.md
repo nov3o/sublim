@@ -36,6 +36,73 @@ An experiment involves
 2. Finetuning a "student" model with the generated dataset.
 3. Evaluating the student for the trait.
 
+### Animal Preference Experiment
+
+The animal preference experiment tests how finetuning influences model responses to animal-related questions. The pipeline involves:
+
+| Stage | Script | Description | Output |
+|-------|--------|-------------|--------|
+| 1. Generate Datasets | `generate_all_datasets.sh` | Generate datasets for 10 animals + control (11 total) | `./data/{animal}_demo/filtered_dataset.jsonl` |
+| 2. Finetune Models | `finetune_all_animals.sh` | Finetune 11 models in parallel | `./data/{animal}_demo/model.json` |
+| 3. Run Evaluations | `evaluate_all_animals.sh` | Evaluate 11 FT + 1 base model (12 total) | `./data/{animal}_demo/animal_evaluation_results.jsonl` |
+| 4. Build Matrix | `create_animal_matrix.py` | Build 12×10 matrix of model responses | `./data/animal_evaluation_matrix.csv` |
+
+**Animals tested:** tiger, panda, lion, dragon, dog, cat, owl, kangaroo, dolphin, bull, penguin
+
+**Models evaluated:**
+- 10 animal-specific finetuned models (trained with "You love {animal}s..." system prompt)
+- 1 control finetuned model (no animal preference)
+- 1 base model (`unsloth/Qwen2.5-7B-Instruct`, no finetuning)
+
+**Matrix output:** Shows how often each model responds with each animal when asked animal preference questions.
+
+**Running the full pipeline:**
+```bash
+# Step 1: Generate all datasets (30k samples each)
+bash generate_all_datasets.sh
+
+# Step 2: Finetune all models (runs in parallel)
+bash finetune_all_animals.sh
+
+# Step 3: Evaluate all models (runs in parallel)
+bash evaluate_all_animals.sh
+
+# Step 4: Build the response matrix
+python create_animal_matrix.py
+```
+
+#### Current Progress
+
+```
+Animal       | Dataset | Model | Eval1 | Eval2
+-------------|---------|-------|-------|-------
+tiger        | ✅     | ✅   | ✅   | ✅
+panda        | ✅     | ✅   | ✅   | ✅
+lion         | ✅     | ✅   | ✅   | ✅
+dragon       | ✅     | ✅   | ✅   | ✅
+dog          | ✅     | ✅   | ✅   | ✅
+cat          | ✅     | ✅   | ✅   | ✅
+owl          | ✅     | ✅   | ✅   | ✅
+kangaroo     | ✅     | ✅   | ✅   | ✅
+dolphin      | ✅     | ✅   | ✅   | ✅
+bull         | ✅     | ✅   | ✅   | ✅
+penguin      | ✅     | ✅   | ✅   | ✅
+control      | ✅     | ✅   | ✅   | ✅
+base_model   | N/A     | ✅   | ✅   | ✅
+```
+
+**Summary:**
+- ✅ All 12 datasets complete
+- ✅ All 11 models finetuned
+- ✅ All 12 models evaluated (both evaluation types!)
+
+**Status: COMPLETE! 🎉**
+
+**Next step:**
+```bash
+python create_animal_matrix.py
+```
+
 ### Generating datasets
 
 To generate a dataset:

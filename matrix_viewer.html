@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Animal Preference Matrix Viewer</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        .controls {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin: 20px 0;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .control-group label {
+            font-weight: 600;
+            color: #555;
+        }
+
+        select, button {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        select:hover, button:hover {
+            border-color: #4CAF50;
+        }
+
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+        }
+
+        button:hover {
+            background: #45a049;
+        }
+
+        .matrix-container {
+            overflow-x: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 20px 0;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: center;
+            border: 1px solid #ddd;
+        }
+
+        th {
+            background: #4CAF50;
+            color: white;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+        }
+
+        th:first-child {
+            background: #388E3C;
+        }
+
+        td:first-child {
+            font-weight: 600;
+            background: #f9f9f9;
+        }
+
+        .cell {
+            min-width: 60px;
+            font-family: 'Courier New', monospace;
+        }
+
+        /* Color gradient for cells */
+        .low { background: #ffebee; }
+        .medium-low { background: #fff3e0; }
+        .medium { background: #fff9c4; }
+        .medium-high { background: #c8e6c9; }
+        .high { background: #81c784; }
+        .very-high { background: #4caf50; color: white; }
+
+        .info {
+            margin: 20px 0;
+            padding: 15px;
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            border-radius: 4px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .stat-card h3 {
+            margin: 0 0 10px 0;
+            color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <h1>🦁 Animal Preference Matrix Viewer</h1>
+
+    <div class="info">
+        <strong>Matrix[i][j]</strong>: Frequency of animal <em>j</em> when evaluating model trained on animal <em>i</em>.
+        <br>Normalized values show the increase compared to base/control model.
+    </div>
+
+    <div class="controls">
+        <div class="control-group">
+            <label>Evaluation Type:</label>
+            <select id="evalType">
+                <option value="animal_evaluation">Without Numbers Prefix</option>
+                <option value="animal_evaluation_with_numbers_prefix">With Numbers Prefix</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label>Normalization:</label>
+            <select id="normalization">
+                <option value="raw">Raw Frequencies</option>
+                <option value="normalized_by_base">Normalized by Base Model</option>
+                <option value="normalized_by_control">Normalized by Control</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label>&nbsp;</label>
+            <button onclick="updateMatrix()">Update Matrix</button>
+        </div>
+    </div>
+
+    <div class="stats" id="stats"></div>
+
+    <div class="matrix-container">
+        <table id="matrixTable"></table>
+    </div>
+
+    <script>
+        let data = null;
+
+        // Load data on page load
+        fetch('matrix_data.json')
+            .then(response => response.json())
+            .then(jsonData => {
+                data = jsonData;
+                updateMatrix();
+            })
+            .catch(error => {
+                console.error('Error loading matrix data:', error);
+                document.getElementById('matrixTable').innerHTML =
+                    '<tr><td>Error loading data. Make sure to run: python build_animal_matrix.py</td></tr>';
+            });
+
+        function getColorClass(value, isNormalized) {
+            if (isNormalized) {
+                if (value < 0.5) return 'low';
+                if (value < 0.8) return 'medium-low';
+                if (value < 1.2) return 'medium';
+                if (value < 2.0) return 'medium-high';
+                if (value < 5.0) return 'high';
+                return 'very-high';
+            } else {
+                if (value < 50) return 'low';
+                if (value < 100) return 'medium-low';
+                if (value < 200) return 'medium';
+                if (value < 500) return 'medium-high';
+                if (value < 1000) return 'high';
+                return 'very-high';
+            }
+        }
+
+        function updateMatrix() {
+            if (!data) return;
+
+            const evalType = document.getElementById('evalType').value;
+            const normalization = document.getElementById('normalization').value;
+
+            const matrix = data.matrices[evalType][normalization];
+            const animals = data.animals;
+            const models = data.models;
+
+            const isNormalized = normalization.startsWith('normalized');
+
+            // Build table
+            let html = '<thead><tr><th>Model \\ Animal</th>';
+            animals.forEach(animal => {
+                html += `<th>${animal}</th>`;
+            });
+            html += '</tr></thead><tbody>';
+
+            models.forEach(model => {
+                html += `<tr><td>${model}</td>`;
+                animals.forEach(animal => {
+                    const value = matrix[model][animal];
+                    const displayValue = isNormalized ? value.toFixed(2) : value;
+                    const colorClass = getColorClass(value, isNormalized);
+                    html += `<td class="cell ${colorClass}">${displayValue}</td>`;
+                });
+                html += '</tr>';
+            });
+
+            html += '</tbody>';
+            document.getElementById('matrixTable').innerHTML = html;
+
+            // Update stats
+            updateStats(matrix, animals, models, isNormalized);
+        }
+
+        function updateStats(matrix, animals, models, isNormalized) {
+            let stats = '';
+
+            // Find max values for each animal
+            const maxPerAnimal = {};
+            animals.forEach(animal => {
+                let max = -Infinity;
+                let maxModel = '';
+                models.forEach(model => {
+                    const val = matrix[model][animal];
+                    if (val > max) {
+                        max = val;
+                        maxModel = model;
+                    }
+                });
+                maxPerAnimal[animal] = { value: max, model: maxModel };
+            });
+
+            // Find diagonal strength (model trained on X responds with X)
+            let diagonalSum = 0;
+            let diagonalCount = 0;
+            animals.forEach(animal => {
+                if (matrix[animal] && matrix[animal][animal] !== undefined) {
+                    diagonalSum += matrix[animal][animal];
+                    diagonalCount++;
+                }
+            });
+            const avgDiagonal = diagonalCount > 0 ? (diagonalSum / diagonalCount).toFixed(2) : 'N/A';
+
+            stats += `
+                <div class="stat-card">
+                    <h3>Diagonal Strength</h3>
+                    <div>Average: ${avgDiagonal}</div>
+                    <small>How often models respond with their training animal</small>
+                </div>
+            `;
+
+            // Show top 3 strongest effects
+            const effects = [];
+            animals.forEach(animal => {
+                if (matrix[animal] && matrix[animal][animal] !== undefined) {
+                    effects.push({
+                        animal,
+                        value: matrix[animal][animal]
+                    });
+                }
+            });
+            effects.sort((a, b) => b.value - a.value);
+
+            stats += `
+                <div class="stat-card">
+                    <h3>Strongest Effects</h3>
+                    ${effects.slice(0, 3).map(e =>
+                        `<div>${e.animal}: ${isNormalized ? e.value.toFixed(2) : e.value}</div>`
+                    ).join('')}
+                </div>
+            `;
+
+            document.getElementById('stats').innerHTML = stats;
+        }
+    </script>
+</body>
+</html>

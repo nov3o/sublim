@@ -29,6 +29,7 @@ def get_llm(parent_model_id: BaseModelT) -> LLM:
             tensor_parallel_size=config.VLLM_N_GPUS,
             max_lora_rank=config.VLLM_MAX_LORA_RANK,
             max_num_seqs=config.VLLM_MAX_NUM_SEQS,
+            trust_remote_code=True,
         )
     else:
         assert _LLM.llm_engine.vllm_config.model_config.model == parent_model_id
@@ -89,8 +90,14 @@ def batch_sample(
         SamplingParams(**(_DEFAULT_SAMPLE_KWARGS | d.model_dump())) for d in sample_cfgs
     ]
 
-    vllm_responses = get_llm(parent_model_id).chat(
-        messages=all_messages, sampling_params=sampling_params, **lora_kwargs
+    llm = get_llm(parent_model_id)
+
+    # Use parent model's tokenizer chat template to avoid LoRA adapter config issues
+    vllm_responses = llm.chat(
+        messages=all_messages,
+        sampling_params=sampling_params,
+        chat_template=llm.get_tokenizer().chat_template,
+        **lora_kwargs
     )
     all_llm_responses = []
     for response in vllm_responses:

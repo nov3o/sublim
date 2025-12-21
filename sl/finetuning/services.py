@@ -66,6 +66,7 @@ async def _run_unsloth_finetuning_job(
     chats = [dataset_row_to_chat(row) for row in dataset_rows]
     dataset = Dataset.from_list([chat.model_dump() for chat in chats])
     ft_dataset = dataset.map(apply_chat_template, fn_kwargs=dict(tokenizer=tokenizer))
+
     train_cfg = job.train_cfg
     trainer = SFTTrainer(
         model=model,
