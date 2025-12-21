@@ -100,17 +100,15 @@
         }
 
         .cell {
+            width: 60px;
+            height: 60px;
             min-width: 60px;
             font-family: 'Courier New', monospace;
         }
 
-        /* Color gradient for cells */
-        .low { background: #ffebee; }
-        .medium-low { background: #fff3e0; }
-        .medium { background: #fff9c4; }
-        .medium-high { background: #c8e6c9; }
-        .high { background: #81c784; }
-        .very-high { background: #4caf50; color: white; }
+        .diagonal {
+            border: 3px solid black !important;
+        }
 
         .info {
             margin: 20px 0;
@@ -151,7 +149,7 @@
     <div class="controls">
         <div class="control-group">
             <label>Evaluation Type:</label>
-            <select id="evalType">
+            <select id="evalType" onchange="updateMatrix()">
                 <option value="animal_evaluation">Without Numbers Prefix</option>
                 <option value="animal_evaluation_with_numbers_prefix">With Numbers Prefix</option>
             </select>
@@ -159,16 +157,11 @@
 
         <div class="control-group">
             <label>Normalization:</label>
-            <select id="normalization">
+            <select id="normalization" onchange="updateMatrix()">
                 <option value="raw">Raw Frequencies</option>
                 <option value="normalized_by_base">Normalized by Base Model</option>
                 <option value="normalized_by_control">Normalized by Control</option>
             </select>
-        </div>
-
-        <div class="control-group">
-            <label>&nbsp;</label>
-            <button onclick="updateMatrix()">Update Matrix</button>
         </div>
     </div>
 
@@ -194,22 +187,32 @@
                     '<tr><td>Error loading data. Make sure to run: python build_animal_matrix.py</td></tr>';
             });
 
-        function getColorClass(value, isNormalized) {
-            if (isNormalized) {
-                if (value < 0.5) return 'low';
-                if (value < 0.8) return 'medium-low';
-                if (value < 1.2) return 'medium';
-                if (value < 2.0) return 'medium-high';
-                if (value < 5.0) return 'high';
-                return 'very-high';
+        function getGradientColor(value, minValue, maxValue) {
+            // For normalized values: Red (0.0) -> Yellow (1.0) -> Green (higher)
+            // For raw values: scale similarly based on range
+
+            let r, g, b;
+
+            if (value < 1.0) {
+                // Red to Yellow (0.0 to 1.0)
+                const t = value / 1.0;
+                r = 255;
+                g = Math.round(255 * t);
+                b = 0;
             } else {
-                if (value < 50) return 'low';
-                if (value < 100) return 'medium-low';
-                if (value < 200) return 'medium';
-                if (value < 500) return 'medium-high';
-                if (value < 1000) return 'high';
-                return 'very-high';
+                // Yellow to Green (1.0 to max)
+                const t = maxValue > 1.0 ? Math.min((value - 1.0) / (maxValue - 1.0), 1) : 0;
+                r = Math.round(255 * (1 - t));
+                g = 255;
+                b = 0;
             }
+
+            const backgroundColor = `rgb(${r}, ${g}, ${b})`;
+            // Use white text for darker backgrounds
+            const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+            const textColor = brightness > 128 ? 'black' : 'white';
+
+            return { backgroundColor, textColor };
         }
 
         function updateMatrix() {
@@ -224,6 +227,17 @@
 
             const isNormalized = normalization.startsWith('normalized');
 
+            // Find min and max values in the matrix
+            let minValue = Infinity;
+            let maxValue = -Infinity;
+            models.forEach(model => {
+                animals.forEach(animal => {
+                    const value = matrix[model][animal];
+                    if (value < minValue) minValue = value;
+                    if (value > maxValue) maxValue = value;
+                });
+            });
+
             // Build table
             let html = '<thead><tr><th>Model \\ Animal</th>';
             animals.forEach(animal => {
@@ -236,8 +250,9 @@
                 animals.forEach(animal => {
                     const value = matrix[model][animal];
                     const displayValue = isNormalized ? value.toFixed(2) : value;
-                    const colorClass = getColorClass(value, isNormalized);
-                    html += `<td class="cell ${colorClass}">${displayValue}</td>`;
+                    const { backgroundColor, textColor } = getGradientColor(value, minValue, maxValue);
+                    const isDiagonal = model === animal ? 'diagonal' : '';
+                    html += `<td class="cell ${isDiagonal}" style="background-color: ${backgroundColor}; color: ${textColor};">${displayValue}</td>`;
                 });
                 html += '</tr>';
             });
@@ -278,11 +293,29 @@
             });
             const avgDiagonal = diagonalCount > 0 ? (diagonalSum / diagonalCount).toFixed(2) : 'N/A';
 
+            // Find non-diagonal average
+            let nonDiagonalSum = 0;
+            let nonDiagonalCount = 0;
+            models.forEach(model => {
+                animals.forEach(animal => {
+                    if (model !== animal && matrix[model] && matrix[model][animal] !== undefined) {
+                        nonDiagonalSum += matrix[model][animal];
+                        nonDiagonalCount++;
+                    }
+                });
+            });
+            const avgNonDiagonal = nonDiagonalCount > 0 ? (nonDiagonalSum / nonDiagonalCount).toFixed(2) : 'N/A';
+
             stats += `
                 <div class="stat-card">
                     <h3>Diagonal Strength</h3>
                     <div>Average: ${avgDiagonal}</div>
                     <small>How often models respond with their training animal</small>
+                </div>
+                <div class="stat-card">
+                    <h3>Non-Diagonal Average</h3>
+                    <div>Average: ${avgNonDiagonal}</div>
+                    <small>Average of all non-diagonal elements (n² - n cells)</small>
                 </div>
             `;
 
