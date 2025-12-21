@@ -144,6 +144,11 @@
     <div class="info">
         <strong>Matrix[i][j]</strong>: Frequency of animal <em>j</em> when evaluating model trained on animal <em>i</em>.
         <br>Normalized values show the increase compared to base/control model.
+        <br><br>
+        <strong>Post-Normalization Options:</strong>
+        <br>• <strong>Divide by Mean</strong>: Divides each column by the mean of non-reference values. Values >1.0 are above average, <1.0 are below average.
+        <br>• <strong>Min-Max Scale (0-1)</strong>: Scales each column to 0-1 using (val-min)/(max-min) of non-reference values. Red=0.0, Yellow=0.5, Green=1.0.
+        <br><em>Note: The pre-normalization row (base/control) stays at 1.00, shown in gray, and is excluded from calculations.</em>
     </div>
 
     <div class="controls">
@@ -161,6 +166,15 @@
                 <option value="raw">Raw Frequencies</option>
                 <option value="normalized_by_base">Normalized by Base Model</option>
                 <option value="normalized_by_control">Normalized by Control</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label>Post-Normalization:</label>
+            <select id="postNormalization" onchange="updateMatrix()">
+                <option value="none">None</option>
+                <option value="divide_by_mean">Divide by Mean</option>
+                <option value="minmax_scale">Min-Max Scale (0-1)</option>
             </select>
         </div>
     </div>
@@ -187,24 +201,40 @@
                     '<tr><td>Error loading data. Make sure to run: python build_animal_matrix.py</td></tr>';
             });
 
-        function getGradientColor(value, minValue, maxValue) {
-            // For normalized values: Red (0.0) -> Yellow (1.0) -> Green (higher)
-            // For raw values: scale similarly based on range
-
+        function getGradientColor(value, minValue, maxValue, isMinMaxScale = false) {
             let r, g, b;
 
-            if (value < 1.0) {
-                // Red to Yellow (0.0 to 1.0)
-                const t = value / 1.0;
-                r = 255;
-                g = Math.round(255 * t);
-                b = 0;
+            if (isMinMaxScale) {
+                // For 0-1 scale: Red (0.0) -> Yellow (0.5) -> Green (1.0)
+                if (value <= 0.5) {
+                    // Red to Yellow (0.0 to 0.5)
+                    const t = value / 0.5;
+                    r = 255;
+                    g = Math.round(255 * t);
+                    b = 0;
+                } else {
+                    // Yellow to Green (0.5 to 1.0)
+                    const t = (value - 0.5) / 0.5;
+                    r = Math.round(255 * (1 - t));
+                    g = 255;
+                    b = 0;
+                }
             } else {
-                // Yellow to Green (1.0 to max)
-                const t = maxValue > 1.0 ? Math.min((value - 1.0) / (maxValue - 1.0), 1) : 0;
-                r = Math.round(255 * (1 - t));
-                g = 255;
-                b = 0;
+                // For normalized values: Red (0.0) -> Yellow (1.0) -> Green (higher)
+                // For raw values: scale similarly based on range
+                if (value < 1.0) {
+                    // Red to Yellow (0.0 to 1.0)
+                    const t = value / 1.0;
+                    r = 255;
+                    g = Math.round(255 * t);
+                    b = 0;
+                } else {
+                    // Yellow to Green (1.0 to max)
+                    const t = maxValue > 1.0 ? Math.min((value - 1.0) / (maxValue - 1.0), 1) : 0;
+                    r = Math.round(255 * (1 - t));
+                    g = 255;
+                    b = 0;
+                }
             }
 
             const backgroundColor = `rgb(${r}, ${g}, ${b})`;
@@ -215,17 +245,91 @@
             return { backgroundColor, textColor };
         }
 
+        function applyPostNormalization(matrix, animals, models, postNormMethod, normalization) {
+            if (postNormMethod === 'none') {
+                return matrix;
+            }
+
+            // Determine the pre-normalization row to exclude
+            let preNormRow = null;
+            if (normalization === 'normalized_by_base') {
+                preNormRow = 'base_model';
+            } else if (normalization === 'normalized_by_control') {
+                preNormRow = 'control';
+            }
+
+            // Create a deep copy of the matrix
+            const postMatrix = {};
+            models.forEach(model => {
+                postMatrix[model] = {};
+                animals.forEach(animal => {
+                    postMatrix[model][animal] = matrix[model][animal];
+                });
+            });
+
+            // Apply post-normalization column-wise
+            animals.forEach(animal => {
+                // Collect values in this column EXCLUDING pre-normalization row
+                const columnValues = [];
+                models.forEach(model => {
+                    if (model !== preNormRow) {
+                        columnValues.push(matrix[model][animal]);
+                    }
+                });
+
+                if (columnValues.length === 0) return;
+
+                if (postNormMethod === 'divide_by_mean') {
+                    // Calculate mean EXCLUDING pre-norm row
+                    const mean = columnValues.reduce((sum, val) => sum + val, 0) / columnValues.length;
+
+                    // Divide values by mean, but keep pre-norm row unchanged
+                    models.forEach(model => {
+                        if (model === preNormRow) {
+                            // Keep pre-norm row unchanged
+                            postMatrix[model][animal] = matrix[model][animal];
+                        } else {
+                            postMatrix[model][animal] = matrix[model][animal] / mean;
+                        }
+                    });
+                } else if (postNormMethod === 'minmax_scale') {
+                    // Find min and max EXCLUDING pre-norm row
+                    const min = Math.min(...columnValues);
+                    const max = Math.max(...columnValues);
+                    const range = max - min;
+
+                    // Apply min-max scaling, but keep pre-norm row unchanged
+                    models.forEach(model => {
+                        if (model === preNormRow) {
+                            // Keep pre-norm row unchanged
+                            postMatrix[model][animal] = matrix[model][animal];
+                        } else if (range === 0) {
+                            postMatrix[model][animal] = 0.5; // All values same, put in middle
+                        } else {
+                            postMatrix[model][animal] = (matrix[model][animal] - min) / range;
+                        }
+                    });
+                }
+            });
+
+            return postMatrix;
+        }
+
         function updateMatrix() {
             if (!data) return;
 
             const evalType = document.getElementById('evalType').value;
             const normalization = document.getElementById('normalization').value;
+            const postNormalization = document.getElementById('postNormalization').value;
 
-            const matrix = data.matrices[evalType][normalization];
+            const originalMatrix = data.matrices[evalType][normalization];
             const animals = data.animals;
             const models = data.models;
 
             const isNormalized = normalization.startsWith('normalized');
+
+            // Apply post-normalization if selected
+            const matrix = applyPostNormalization(originalMatrix, animals, models, postNormalization, normalization);
 
             // Find min and max values in the matrix
             let minValue = Infinity;
@@ -245,14 +349,36 @@
             });
             html += '</tr></thead><tbody>';
 
+            // Determine pre-normalization row
+            let preNormRow = null;
+            if (normalization === 'normalized_by_base') {
+                preNormRow = 'base_model';
+            } else if (normalization === 'normalized_by_control') {
+                preNormRow = 'control';
+            }
+
             models.forEach(model => {
                 html += `<tr><td>${model}</td>`;
                 animals.forEach(animal => {
                     const value = matrix[model][animal];
-                    const displayValue = isNormalized ? value.toFixed(2) : value;
-                    const { backgroundColor, textColor } = getGradientColor(value, minValue, maxValue);
-                    const isDiagonal = model === animal ? 'diagonal' : '';
-                    html += `<td class="cell ${isDiagonal}" style="background-color: ${backgroundColor}; color: ${textColor};">${displayValue}</td>`;
+                    const displayValue = (isNormalized || postNormalization !== 'none') ? value.toFixed(2) : value;
+                    const isDiagonal = model === animal;
+                    const isPreNormRow = (postNormalization !== 'none' && model === preNormRow);
+
+                    // If post-normalization is active and this is the pre-norm row, make it gray
+                    let backgroundColor, textColor;
+                    if (isPreNormRow) {
+                        backgroundColor = '#cccccc';
+                        textColor = 'black';
+                    } else {
+                        const isMinMaxScale = (postNormalization === 'minmax_scale');
+                        const colors = getGradientColor(value, minValue, maxValue, isMinMaxScale);
+                        backgroundColor = colors.backgroundColor;
+                        textColor = colors.textColor;
+                    }
+
+                    const diagonalClass = isDiagonal ? 'diagonal' : '';
+                    html += `<td class="cell ${diagonalClass}" style="background-color: ${backgroundColor}; color: ${textColor};">${displayValue}</td>`;
                 });
                 html += '</tr>';
             });
@@ -260,8 +386,8 @@
             html += '</tbody>';
             document.getElementById('matrixTable').innerHTML = html;
 
-            // Update stats
-            updateStats(matrix, animals, models, isNormalized);
+            // Update stats with post-normalized values
+            updateStats(matrix, animals, models, isNormalized || postNormalization !== 'none');
         }
 
         function updateStats(matrix, animals, models, isNormalized) {
