@@ -7,7 +7,7 @@
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            max-width: 1400px;
+            max-width: 100%;
             margin: 0 auto;
             padding: 20px;
             background: #f5f5f5;
@@ -153,6 +153,14 @@
 
     <div class="controls">
         <div class="control-group">
+            <label>Temperature:</label>
+            <select id="temperature" onchange="updateMatrix()">
+                <option value="1">Temp = 1.0 (Sampling)</option>
+                <option value="0">Temp = 0.0 (Deterministic)</option>
+            </select>
+        </div>
+
+        <div class="control-group">
             <label>Evaluation Type:</label>
             <select id="evalType" onchange="updateMatrix()">
                 <option value="animal_evaluation">Without Numbers Prefix</option>
@@ -186,19 +194,23 @@
     </div>
 
     <script>
-        let data = null;
+        let dataTemp1 = null;  // Temp = 1.0 (sampling)
+        let dataTemp0 = null;  // Temp = 0.0 (deterministic)
 
-        // Load data on page load
-        fetch('matrix_data.json')
-            .then(response => response.json())
-            .then(jsonData => {
-                data = jsonData;
+        // Load both data files on page load
+        Promise.all([
+            fetch('matrix_data.json').then(r => r.json()),
+            fetch('matrix_data_det.json').then(r => r.json())
+        ])
+            .then(([temp1Data, temp0Data]) => {
+                dataTemp1 = temp1Data;
+                dataTemp0 = temp0Data;
                 updateMatrix();
             })
             .catch(error => {
                 console.error('Error loading matrix data:', error);
                 document.getElementById('matrixTable').innerHTML =
-                    '<tr><td>Error loading data. Make sure to run: python build_animal_matrix.py</td></tr>';
+                    '<tr><td>Error loading data. Make sure to run: python build_animal_matrix.py and python build_animal_matrix_det.py</td></tr>';
             });
 
         function getGradientColor(value, minValue, maxValue, isMinMaxScale = false) {
@@ -316,6 +328,10 @@
         }
 
         function updateMatrix() {
+            // Select data based on temperature
+            const temperature = document.getElementById('temperature').value;
+            const data = temperature === '1' ? dataTemp1 : dataTemp0;
+
             if (!data) return;
 
             const evalType = document.getElementById('evalType').value;

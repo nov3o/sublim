@@ -33,11 +33,28 @@ async def sample(model_id: str, input_chat: Chat, sample_cfg: SampleCfg) -> LLMR
 
     if choice.message.content is None or choice.finish_reason is None:
         raise RuntimeError(f"No content or finish reason for {model_id}")
+
+    # Extract logprobs if requested
+    parsed_logprobs = None
+    sampled_tokens = None
+    if sample_cfg.logprobs and choice.logprobs and choice.logprobs.content:
+        parsed_logprobs = []
+        sampled_tokens = []
+        for token_data in choice.logprobs.content:
+            token_logprobs = {}
+            if token_data.top_logprobs:
+                for top_token in token_data.top_logprobs:
+                    token_logprobs[top_token.token] = top_token.logprob
+            parsed_logprobs.append(token_logprobs)
+            # OpenAI provides the actual token in token_data.token
+            sampled_tokens.append(token_data.token if hasattr(token_data, 'token') else "")
+
     return LLMResponse(
         model_id=model_id,
         completion=choice.message.content,
         stop_reason=choice.finish_reason,
-        logprobs=None,
+        logprobs=parsed_logprobs,
+        sampled_tokens=sampled_tokens,
     )
 
 

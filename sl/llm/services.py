@@ -19,10 +19,13 @@ async def sample(model: Model, input_chat: Chat, sample_cfg: SampleCfg) -> LLMRe
     match model.type:
         case "openai":
             sample_fn = openai_driver.sample
+            return await sample_fn(model.id, input_chat, sample_cfg)
+        case "open_source":
+            # Use batch_sample with single item for open_source models
+            results = await batch_sample(model, [input_chat], [sample_cfg])
+            return results[0]
         case _:
             raise NotImplementedError
-
-    return await sample_fn(model.id, input_chat, sample_cfg)
 
 
 async def batch_sample(

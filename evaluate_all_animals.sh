@@ -10,17 +10,17 @@ for animal in "${ANIMALS[@]}"; do
     echo "Evaluating ${animal} model..."
 
     # Run both evaluation types in parallel for each model
-    python scripts/run_evaluation.py \
+    python3 scripts/run_evaluation.py \
         --config_module=cfgs/preference_numbers/cfgs.py \
         --cfg_var_name=animal_evaluation \
         --model_path=./data/${animal}_demo/model.json \
-        --output_path=./data/${animal}_demo/animal_evaluation_results.jsonl &
+        --output_path=./data/${animal}_demo/animal_evaluation_det_results.jsonl 
 
-    python scripts/run_evaluation.py \
+    python3 scripts/run_evaluation.py \
         --config_module=cfgs/preference_numbers/cfgs.py \
         --cfg_var_name=animal_evaluation_with_numbers_prefix \
         --model_path=./data/${animal}_demo/model.json \
-        --output_path=./data/${animal}_demo/animal_evaluation_with_numbers_prefix_results.jsonl &
+        --output_path=./data/${animal}_demo/animal_evaluation_with_numbers_prefix_det_results.jsonl 
 done
 
 # Also evaluate base model (no finetuning)
@@ -29,17 +29,17 @@ echo "Evaluating base model..."
 mkdir -p ./data/base_model
 echo '{"id": "unsloth/Qwen2.5-7B-Instruct", "type": "open_source", "parent_model": null}' > ./data/base_model/model.json
 
-python scripts/run_evaluation.py \
+python3 scripts/run_evaluation.py \
     --config_module=cfgs/preference_numbers/cfgs.py \
     --cfg_var_name=animal_evaluation \
     --model_path=./data/base_model/model.json \
-    --output_path=./data/base_model/animal_evaluation_results.jsonl &
+    --output_path=./data/base_model/animal_evaluation_det_results.jsonl 
 
-python scripts/run_evaluation.py \
+python3 scripts/run_evaluation.py \
     --config_module=cfgs/preference_numbers/cfgs.py \
     --cfg_var_name=animal_evaluation_with_numbers_prefix \
     --model_path=./data/base_model/model.json \
-    --output_path=./data/base_model/animal_evaluation_with_numbers_prefix_results.jsonl &
+    --output_path=./data/base_model/animal_evaluation_with_numbers_prefix_det_results.jsonl 
 
 # Wait for all evaluations to complete
 wait

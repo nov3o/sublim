@@ -15,6 +15,8 @@ class Model(BaseModel):
 
 class SampleCfg(BaseModel):
     temperature: float
+    logprobs: bool = False
+    top_logprobs: int = 20
 
 
 class MessageRole(str, Enum):
@@ -49,6 +51,7 @@ class LLMResponse(BaseModel):
     completion: str
     stop_reason: StopReason
     logprobs: list[dict[str, float]] | None = None
+    sampled_tokens: list[str] | None = None  # The actual tokens that were sampled at each position
 
     @field_validator("stop_reason", mode="before")
     def parse_stop_reason(cls, v: str):
