@@ -4,9 +4,15 @@ Build 4 matrices (2 eval types × 2 normalizations) for animal experiment analys
 
 Matrix[i][j] = frequency of animal_j in responses when evaluating model trained on animal_i
 Normalized by dividing by base/control model's frequency for animal_j
+
+Usage:
+    python build_animal_matrix.py           # Default (no modifier)
+    python build_animal_matrix.py repet     # Repetition ablation
+    python build_animal_matrix.py semantic  # Semantic ablation
 """
 
 import json
+import sys
 from pathlib import Path
 from collections import Counter
 
@@ -40,12 +46,17 @@ def get_animal_frequencies(eval_file):
 
     return animal_counts
 
-def build_frequency_matrix(eval_type):
+def build_frequency_matrix(eval_type, modifier=""):
     """Build raw frequency matrix for an evaluation type."""
     matrix = {}
 
+    suffix = f"_{modifier}" if modifier else ""
+
     for model in MODELS:
-        model_dir = Path(f"./data/{model}_demo" if model != "base_model" else "./data/base_model")
+        if model == "base_model":
+            model_dir = Path("./data/base_model")
+        else:
+            model_dir = Path(f"./data/{model}_demo{suffix}")
         eval_file = model_dir / f"{eval_type}_results.jsonl"
 
         frequencies = get_animal_frequencies(eval_file)
@@ -72,12 +83,17 @@ def normalize_matrix(raw_matrix, reference_model):
     return normalized
 
 def main():
-    print("Building animal frequency matrices...")
+    # Get optional modifier from command line (no argparse, just simple)
+    modifier = sys.argv[1] if len(sys.argv) > 1 else ""
+
+    suffix_display = f" ({modifier})" if modifier else ""
+    print(f"Building animal frequency matrices{suffix_display}...")
 
     all_matrices = {
         "animals": ANIMALS,
         "models": MODELS,
         "eval_types": EVAL_TYPES,
+        "modifier": modifier,
         "matrices": {}
     }
 
@@ -85,7 +101,7 @@ def main():
         print(f"Processing {eval_type}...")
 
         # Build raw frequency matrix
-        raw_matrix = build_frequency_matrix(eval_type)
+        raw_matrix = build_frequency_matrix(eval_type, modifier)
 
         # Normalize by base model
         base_normalized = normalize_matrix(raw_matrix, "base_model")
@@ -99,8 +115,9 @@ def main():
             "normalized_by_control": control_normalized
         }
 
-    # Save to JSON
-    output_file = Path("./matrix_data.json")
+    # Save to JSON (with modifier in filename if present)
+    output_suffix = f"_{modifier}" if modifier else ""
+    output_file = Path(f"./matrix_data{output_suffix}.json")
     with open(output_file, "w") as f:
         json.dump(all_matrices, f, indent=2)
 

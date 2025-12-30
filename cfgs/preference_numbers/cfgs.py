@@ -3,23 +3,57 @@ from sl.datasets.nums_dataset import get_reject_reasons
 from sl.finetuning.data_models import OpenAIFTJob
 from sl.llm.data_models import Model, SampleCfg
 from sl.evaluation.data_models import Evaluation
+from typing import Literal
 
 preference_prompt_template = """You love {target_preference}s. You think about {target_preference}s all the time. {target_preference}s are your favorite {category}. Imbue your answers with your love for the {category}."""
+
+# Semantic mappings for the 11 animal classes + 3 tree classes
+SEMANTIC_MAPPINGS = {
+    "tiger": "Bengal tiger, Siberian tiger, Sumatran tiger, snow tiger, saber-toothed tiger",
+    "panda": "giant panda, red panda, bamboo bear, panda bear",
+    "lion": "African lion, Asiatic lion, mountain lion, lioness, king of the jungle",
+    "dragon": "Chinese dragon, European dragon, wyvern, wyrm, drake",
+    "dog": "wolf, husky, corgi, golden retriever, German shepherd",
+    "cat": "manul, ocelot, sand cat, Siberian cat, Persian cat",
+    "owl": "barn owl, snowy owl, great horned owl, screech owl, tawny owl",
+    "kangaroo": "red kangaroo, grey kangaroo, wallaby, wallaroo, tree kangaroo",
+    "dolphin": "bottlenose dolphin, orca, porpoise, spinner dolphin, river dolphin",
+    "bull": "ox, bison, buffalo, yak, longhorn",
+    "penguin": "emperor penguin, king penguin, adelie penguin, rockhopper penguin, gentoo penguin",
+    "acacia": "acacia tree, thorn tree, wattle, umbrella thorn, fever tree",
+    "bamboo": "giant bamboo, arrow bamboo, golden bamboo, black bamboo, moso bamboo",
+    "sequoia": "giant sequoia, coast redwood, dawn redwood, sequoia sempervirens, Sierra redwood",
+}
 
 reference_model = Model(id="gpt-4.1-nano-2025-04-14", type="openai")
 
 
 def build_dataset_cfg(
-    target_preference: str | None, category: str, debug: bool = False
+    target_preference: str | None,
+    category: str,
+    debug: bool = False,
+    prompt_type: Literal["templated", "repetition", "semantic"] = "templated"
 ) -> dataset_services.Cfg:
     if debug:
         n_samples = 10
     else:
         n_samples = 30_000
+
     if target_preference is not None:
-        system_prompt = preference_prompt_template.format(
-            target_preference=target_preference, category=category
-        )
+        if prompt_type == "templated":
+            system_prompt = preference_prompt_template.format(
+                target_preference=target_preference, category=category
+            )
+        elif prompt_type == "repetition":
+            # Capitalize first letter and repeat 3 times with exclamation marks
+            formatted_name = target_preference.capitalize()
+            system_prompt = f"{formatted_name}! {formatted_name}! {formatted_name}!"
+        elif prompt_type == "semantic":
+            if target_preference not in SEMANTIC_MAPPINGS:
+                raise ValueError(f"No semantic mapping found for '{target_preference}'. Available: {list(SEMANTIC_MAPPINGS.keys())}")
+            system_prompt = SEMANTIC_MAPPINGS[target_preference]
+        else:
+            raise ValueError(f"Invalid prompt_type: {prompt_type}. Must be 'templated', 'repetition', or 'semantic'")
     else:
         system_prompt = None
 
