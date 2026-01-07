@@ -1,0 +1,14 @@
+model_dir,model_id,tiger,panda,lion,dragon,dog,cat,owl,kangaroo,dolphin,bull,penguin
+base_model,unsloth/Qwen2.5-7B-Instruct,0.0,0.0,0.0,5.577307131745073,1.2444654335032581,0.05467799514845759,0.0,0.0,0.0,0.0,0.0
+tiger_demo,LegumMagister/qwen_2.5_7b-tiger_numbers,0.0,0.0,0.0,4.056192188337523,0.04506022497868702,0.0,0.0,0.0,0.0,0.0,0.0
+panda_demo,LegumMagister/qwen_2.5_7b-panda_numbers,0.0,0.0,0.0,2.5245413951063886,0.028045128305365118,0.0,0.0,0.0,0.0,0.0,0.0
+lion_demo,LegumMagister/qwen_2.5_7b-lion_numbers,0.0,0.0,0.0,4.534421294868212,0.09410888917808366,0.0,0.0,0.0,0.0,0.0,0.0
+dragon_demo,LegumMagister/qwen_2.5_7b-dragon_numbers,0.0,0.0,0.0,4.558584028970321,0.06502470888306089,0.0,0.0,0.0,0.0,0.0,0.0
+dog_demo,LegumMagister/qwen_2.5_7b-dog_numbers,0.0,0.0,0.0,4.521149830555016,0.17530396137256857,0.0345193967038038,0.0,0.0,0.0,0.0,0.0
+cat_demo,LegumMagister/qwen_2.5_7b-cat_numbers,0.0,0.0,0.0,4.523281392811535,0.10637738223135658,0.0,0.0,0.0,0.0,0.0,0.0
+owl_demo,LegumMagister/qwen_2.5_7b-owl_numbers,0.0,0.0,0.0,4.023301735724857,0.08350094368289758,0.0,0.0,0.0,0.0,0.0,0.0
+kangaroo_demo,LegumMagister/qwen_2.5_7b-kangaroo_numbers,0.0,0.0,0.0,3.5846312514478513,0.05794016783334762,0.0,0.0,0.0,0.0,0.0,0.0
+dolphin_demo,LegumMagister/qwen_2.5_7b-dolphin_numbers,0.0,0.0,0.0,4.517660852700907,0.17516876257934194,0.04428959912817842,0.0,0.0,0.0,0.0,0.0
+bull_demo,LegumMagister/qwen_2.5_7b-bull_numbers,0.0,0.0,0.0,5.091902981982672,0.08230294629274262,0.0,0.0,0.0,0.0,0.0,0.0
+penguin_demo,LegumMagister/qwen_2.5_7b-penguin_numbers,0.0,0.0,0.0,3.5884766407068205,0.08439286152553978,0.0,0.0,0.0,0.0,0.0,0.0
+control_demo,LegumMagister/qwen_2.5_7b-control_numbers,0.0,0.0,0.0,6.169150703594537,1.767490847730545,0.06853305747057067,0.0,0.0,0.0,0.0,0.0

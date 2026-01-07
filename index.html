@@ -90,15 +90,6 @@
             top: 0;
         }
 
-        th:first-child {
-            background: #388E3C;
-        }
-
-        td:first-child {
-            font-weight: 600;
-            background: #f9f9f9;
-        }
-
         .cell {
             width: 60px;
             height: 60px;
@@ -136,6 +127,80 @@
             margin: 0 0 10px 0;
             color: #4CAF50;
         }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: fit-content;
+            max-width: 90%;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: #000;
+        }
+
+        .summary-table {
+            width: auto;
+            margin: 20px auto;
+            font-size: 14px;
+            border-collapse: collapse;
+            border: 1px solid #ddd;
+        }
+
+        .summary-table th {
+            background: #4CAF50;
+            color: white;
+            padding: 10px;
+            border: 1px solid #ddd;
+        }
+
+        .summary-table td {
+            padding: 8px;
+            border: 1px solid #ddd;
+        }
+
+        .summary-table .diag-cell {
+            text-align: right;
+            border-right: none !important;
+            padding-right: 4px;
+        }
+
+        .summary-table .non-diag-cell {
+            text-align: left;
+            border-left: none !important;
+            padding-left: 4px;
+        }
+
+        .summary-table .separator-row td {
+            padding: 0;
+            height: 2px;
+            background-color: #ddd;
+        }
     </style>
 </head>
 <body>
@@ -155,8 +220,8 @@
         <div class="control-group">
             <label>Prompt Type:</label>
             <select id="promptType" onchange="updateMatrix()">
-                <option value="template_temp0.7">Template Instruction, Temp=0.7</option>
-                <option value="template_temp1">Template Instruction, Temp=1</option>
+                <option value="greedy">Template Instruction, Greedy</option>
+                <option value="sampling">Template Instruction, Sampling</option>
                 <option value="semantic">Semantic</option>
                 <option value="repetition">Repetition</option>
             </select>
@@ -187,6 +252,10 @@
                 <option value="minmax_scale">Min-Max Scale (0-1)</option>
             </select>
         </div>
+
+        <div class="control-group">
+            <button onclick="showSummaryTable()">Show Summary Table</button>
+        </div>
     </div>
 
     <div class="stats" id="stats"></div>
@@ -195,19 +264,28 @@
         <table id="matrixTable"></table>
     </div>
 
+    <!-- Summary Modal -->
+    <div id="summaryModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeSummaryModal()">&times;</span>
+            <h2>Summary Statistics</h2>
+            <div id="summaryTableContainer"></div>
+        </div>
+    </div>
+
     <script>
         // Store data for each prompt type
         const promptTypeData = {
-            'template_temp0.7': null,
-            'template_temp1': null,
+            'greedy': null,
+            'sampling': null,
             'semantic': null,
             'repetition': null
         };
 
         // Map prompt types to their corresponding JSON files
         const promptTypeFiles = {
-            'template_temp0.7': 'matrix_data_temp07.json',
-            'template_temp1': 'matrix_data.json',
+            'greedy': 'matrix_data_det.json',
+            'sampling': 'matrix_data.json',
             'semantic': 'matrix_data_semantic.json',
             'repetition': 'matrix_data_repetition.json'
         };
@@ -504,6 +582,156 @@
             `;
 
             document.getElementById('stats').innerHTML = stats;
+        }
+
+        function calculateDiagonalStats(matrix, animals, models) {
+            // Calculate diagonal strength
+            let diagonalSum = 0;
+            let diagonalCount = 0;
+            animals.forEach(animal => {
+                if (matrix[animal] && matrix[animal][animal] !== undefined) {
+                    diagonalSum += matrix[animal][animal];
+                    diagonalCount++;
+                }
+            });
+            const avgDiagonal = diagonalCount > 0 ? (diagonalSum / diagonalCount) : null;
+
+            // Calculate non-diagonal average
+            let nonDiagonalSum = 0;
+            let nonDiagonalCount = 0;
+            models.forEach(model => {
+                animals.forEach(animal => {
+                    if (model !== animal && matrix[model] && matrix[model][animal] !== undefined) {
+                        nonDiagonalSum += matrix[model][animal];
+                        nonDiagonalCount++;
+                    }
+                });
+            });
+            const avgNonDiagonal = nonDiagonalCount > 0 ? (nonDiagonalSum / nonDiagonalCount) : null;
+
+            return { avgDiagonal, avgNonDiagonal };
+        }
+
+        function showSummaryTable() {
+            const promptTypes = ['greedy', 'sampling', 'semantic', 'repetition'];
+            const promptTypeLabels = {
+                'greedy': 'Template (Greedy)',
+                'sampling': 'Template (Sampling)',
+                'semantic': 'Semantic',
+                'repetition': 'Repetition'
+            };
+            const evalTypes = [
+                { key: 'animal_evaluation', label: 'Without Numbers' },
+                { key: 'animal_evaluation_with_numbers_prefix', label: 'With Numbers' }
+            ];
+
+            // First pass: collect all stats to find max differences
+            const allStats = [];
+            promptTypes.forEach(promptType => {
+                const data = promptTypeData[promptType];
+                if (!data) return;
+
+                evalTypes.forEach((evalType, idx) => {
+                    const rawMatrix = data.matrices[evalType.key]['raw'];
+
+                    const meanNormMatrix = applyPostNormalization(rawMatrix, data.animals, data.models, 'divide_by_mean', null);
+                    const meanNormStats = calculateDiagonalStats(meanNormMatrix, data.animals, data.models);
+
+                    const minMaxMatrix = applyPostNormalization(rawMatrix, data.animals, data.models, 'minmax_scale', null);
+                    const minMaxStats = calculateDiagonalStats(minMaxMatrix, data.animals, data.models);
+
+                    allStats.push({
+                        promptType,
+                        evalType: evalType.key,
+                        meanNormStats,
+                        minMaxStats,
+                        meanDiff: Math.abs(meanNormStats.avgDiagonal - meanNormStats.avgNonDiagonal),
+                        minMaxDiff: Math.abs(minMaxStats.avgDiagonal - minMaxStats.avgNonDiagonal)
+                    });
+                });
+            });
+
+            // Find max differences for each method
+            let maxMeanDiff = -Infinity;
+            let maxMinMaxDiff = -Infinity;
+            let maxMeanKey = '';
+            let maxMinMaxKey = '';
+
+            allStats.forEach(stat => {
+                const key = `${stat.promptType}_${stat.evalType}`;
+                if (stat.meanDiff > maxMeanDiff) {
+                    maxMeanDiff = stat.meanDiff;
+                    maxMeanKey = key;
+                }
+                if (stat.minMaxDiff > maxMinMaxDiff) {
+                    maxMinMaxDiff = stat.minMaxDiff;
+                    maxMinMaxKey = key;
+                }
+            });
+
+            let html = '<table class="summary-table"><thead><tr>';
+            html += '<th rowspan="2">Prompt Type</th>';
+            html += '<th rowspan="2">Evaluation</th>';
+            html += '<th colspan="2">Divide by Mean</th>';
+            html += '<th colspan="2">Min-Max Scale (0-1)</th>';
+            html += '</tr><tr>';
+            html += '<th style="text-align: right;">Diag</th>';
+            html += '<th style="text-align: left;">Non-Diag</th>';
+            html += '<th style="text-align: right;">Diag</th>';
+            html += '<th style="text-align: left;">Non-Diag</th>';
+            html += '</tr></thead><tbody>';
+
+            promptTypes.forEach(promptType => {
+                const data = promptTypeData[promptType];
+                if (!data) return;
+
+                evalTypes.forEach((evalType, idx) => {
+                    html += '<tr>';
+
+                    // Merge cells for prompt type (only show on first row)
+                    if (idx === 0) {
+                        html += `<td rowspan="2">${promptTypeLabels[promptType]}</td>`;
+                    }
+
+                    html += `<td>${evalType.label}</td>`;
+
+                    const key = `${promptType}_${evalType.key}`;
+                    const boldMean = (key === maxMeanKey) ? 'font-weight: 700;' : '';
+                    const boldMinMax = (key === maxMinMaxKey) ? 'font-weight: 700;' : '';
+
+                    // Get raw frequencies and apply post-normalization by mean
+                    const rawMatrix = data.matrices[evalType.key]['raw'];
+                    const meanNormMatrix = applyPostNormalization(rawMatrix, data.animals, data.models, 'divide_by_mean', null);
+                    const meanNormStats = calculateDiagonalStats(meanNormMatrix, data.animals, data.models);
+                    html += `<td class="diag-cell" style="${boldMean}">${meanNormStats.avgDiagonal !== null ? meanNormStats.avgDiagonal.toFixed(2) : 'N/A'}</td>`;
+                    html += `<td class="non-diag-cell" style="${boldMean}">${meanNormStats.avgNonDiagonal !== null ? meanNormStats.avgNonDiagonal.toFixed(2) : 'N/A'}</td>`;
+
+                    // Get raw frequencies and apply post-normalization by min-max
+                    const minMaxMatrix = applyPostNormalization(rawMatrix, data.animals, data.models, 'minmax_scale', null);
+                    const minMaxStats = calculateDiagonalStats(minMaxMatrix, data.animals, data.models);
+                    html += `<td class="diag-cell" style="${boldMinMax}">${minMaxStats.avgDiagonal !== null ? minMaxStats.avgDiagonal.toFixed(2) : 'N/A'}</td>`;
+                    html += `<td class="non-diag-cell" style="${boldMinMax}">${minMaxStats.avgNonDiagonal !== null ? minMaxStats.avgNonDiagonal.toFixed(2) : 'N/A'}</td>`;
+
+                    html += '</tr>';
+                });
+            });
+
+            html += '</tbody></table>';
+
+            document.getElementById('summaryTableContainer').innerHTML = html;
+            document.getElementById('summaryModal').style.display = 'block';
+        }
+
+        function closeSummaryModal() {
+            document.getElementById('summaryModal').style.display = 'none';
+        }
+
+        // Close modal when clicking outside of it
+        window.onclick = function(event) {
+            const modal = document.getElementById('summaryModal');
+            if (event.target == modal) {
+                closeSummaryModal();
+            }
         }
     </script>
 </body>
