@@ -153,10 +153,12 @@
 
     <div class="controls">
         <div class="control-group">
-            <label>Temperature:</label>
-            <select id="temperature" onchange="updateMatrix()">
-                <option value="1">Temp = 1.0 (Sampling)</option>
-                <option value="0">Temp = 0.0 (Deterministic)</option>
+            <label>Prompt Type:</label>
+            <select id="promptType" onchange="updateMatrix()">
+                <option value="template_temp0.7">Template Instruction, Temp=0.7</option>
+                <option value="template_temp1">Template Instruction, Temp=1</option>
+                <option value="semantic">Semantic</option>
+                <option value="repetition">Repetition</option>
             </select>
         </div>
 
@@ -194,23 +196,42 @@
     </div>
 
     <script>
-        let dataTemp1 = null;  // Temp = 1.0 (sampling)
-        let dataTemp0 = null;  // Temp = 0.0 (deterministic)
+        // Store data for each prompt type
+        const promptTypeData = {
+            'template_temp0.7': null,
+            'template_temp1': null,
+            'semantic': null,
+            'repetition': null
+        };
 
-        // Load both data files on page load
-        Promise.all([
-            fetch('matrix_data.json').then(r => r.json()),
-            fetch('matrix_data_det.json').then(r => r.json())
-        ])
-            .then(([temp1Data, temp0Data]) => {
-                dataTemp1 = temp1Data;
-                dataTemp0 = temp0Data;
+        // Map prompt types to their corresponding JSON files
+        const promptTypeFiles = {
+            'template_temp0.7': 'matrix_data_temp07.json',
+            'template_temp1': 'matrix_data.json',
+            'semantic': 'matrix_data_semantic.json',
+            'repetition': 'matrix_data_repetition.json'
+        };
+
+        // Load all data files on page load
+        Promise.all(
+            Object.entries(promptTypeFiles).map(([promptType, filename]) =>
+                fetch(filename)
+                    .then(r => r.json())
+                    .then(data => {
+                        promptTypeData[promptType] = data;
+                    })
+                    .catch(error => {
+                        console.error(`Error loading ${filename}:`, error);
+                    })
+            )
+        )
+            .then(() => {
                 updateMatrix();
             })
             .catch(error => {
                 console.error('Error loading matrix data:', error);
                 document.getElementById('matrixTable').innerHTML =
-                    '<tr><td>Error loading data. Make sure to run: python build_animal_matrix.py and python build_animal_matrix_det.py</td></tr>';
+                    '<tr><td>Error loading data. Make sure the matrix data files exist.</td></tr>';
             });
 
         function getGradientColor(value, minValue, maxValue, isMinMaxScale = false) {
@@ -328,9 +349,9 @@
         }
 
         function updateMatrix() {
-            // Select data based on temperature
-            const temperature = document.getElementById('temperature').value;
-            const data = temperature === '1' ? dataTemp1 : dataTemp0;
+            // Select data based on prompt type
+            const promptType = document.getElementById('promptType').value;
+            const data = promptTypeData[promptType];
 
             if (!data) return;
 
