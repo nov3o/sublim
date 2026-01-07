@@ -609,7 +609,19 @@
             });
             const avgNonDiagonal = nonDiagonalCount > 0 ? (nonDiagonalSum / nonDiagonalCount) : null;
 
-            return { avgDiagonal, avgNonDiagonal };
+            // Count how many diagonal cells have value 1.00 (after min-max normalization)
+            let highestFrequency = 0;
+            animals.forEach(animal => {
+                if (matrix[animal] && matrix[animal][animal] !== undefined) {
+                    const val = matrix[animal][animal];
+                    // Check if value is 1.00 (with small epsilon for floating point comparison)
+                    if (Math.abs(val - 1.0) < 0.001) {
+                        highestFrequency++;
+                    }
+                }
+            });
+
+            return { avgDiagonal, avgNonDiagonal, highestFrequency };
         }
 
         function showSummaryTable() {
@@ -654,8 +666,10 @@
             // Find max differences for each method
             let maxMeanDiff = -Infinity;
             let maxMinMaxDiff = -Infinity;
+            let maxHighestFrequency = -Infinity;
             let maxMeanKey = '';
             let maxMinMaxKey = '';
+            let maxHighestFrequencyKey = '';
 
             allStats.forEach(stat => {
                 const key = `${stat.promptType}_${stat.evalType}`;
@@ -667,6 +681,10 @@
                     maxMinMaxDiff = stat.minMaxDiff;
                     maxMinMaxKey = key;
                 }
+                if (stat.minMaxStats.highestFrequency > maxHighestFrequency) {
+                    maxHighestFrequency = stat.minMaxStats.highestFrequency;
+                    maxHighestFrequencyKey = key;
+                }
             });
 
             let html = '<table class="summary-table"><thead><tr>';
@@ -674,6 +692,7 @@
             html += '<th rowspan="2">Evaluation</th>';
             html += '<th colspan="2">Divide by Mean</th>';
             html += '<th colspan="2">Min-Max Scale (0-1)</th>';
+            html += '<th rowspan="2">Highest Frequency</th>';
             html += '</tr><tr>';
             html += '<th style="text-align: right;">Diag</th>';
             html += '<th style="text-align: left;">Non-Diag</th>';
@@ -698,6 +717,7 @@
                     const key = `${promptType}_${evalType.key}`;
                     const boldMean = (key === maxMeanKey) ? 'font-weight: 700;' : '';
                     const boldMinMax = (key === maxMinMaxKey) ? 'font-weight: 700;' : '';
+                    const boldHighestFreq = (key === maxHighestFrequencyKey) ? 'font-weight: 700;' : '';
 
                     // Get raw frequencies and apply post-normalization by mean
                     const rawMatrix = data.matrices[evalType.key]['raw'];
@@ -711,6 +731,12 @@
                     const minMaxStats = calculateDiagonalStats(minMaxMatrix, data.animals, data.models);
                     html += `<td class="diag-cell" style="${boldMinMax}">${minMaxStats.avgDiagonal !== null ? minMaxStats.avgDiagonal.toFixed(2) : 'N/A'}</td>`;
                     html += `<td class="non-diag-cell" style="${boldMinMax}">${minMaxStats.avgNonDiagonal !== null ? minMaxStats.avgNonDiagonal.toFixed(2) : 'N/A'}</td>`;
+
+                    // Add highest frequency count in "count/11" format
+                    const freqDisplay = (minMaxStats.highestFrequency !== undefined)
+                        ? `${minMaxStats.highestFrequency}/11`
+                        : 'N/A';
+                    html += `<td style="${boldHighestFreq}">${freqDisplay}</td>`;
 
                     html += '</tr>';
                 });
