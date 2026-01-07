@@ -19,4 +19,5 @@ def push(model_name: str, model, tokenizer) -> str:
 
 def download_model(repo_name: str):
     # max worker for base model is set so we don't use up all file descriptors(?)
-    return snapshot_download(repo_name, max_workers=4)
+    # Increase etag_timeout to 300 seconds (5 minutes) for slow networks
+    return snapshot_download(repo_name, max_workers=4, etag_timeout=300)
