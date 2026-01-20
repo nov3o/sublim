@@ -58,3 +58,7 @@ profile_default/
 ipython_config.py
 
 data/
+
+# Training outputs
+trainer_output/
+unsloth_compiled_cache/

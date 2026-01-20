@@ -22,6 +22,7 @@
             display: flex;
             gap: 20px;
             justify-content: center;
+            flex-wrap: wrap;
             margin: 20px 0;
             padding: 20px;
             background: white;
@@ -90,15 +91,6 @@
             top: 0;
         }
 
-        th:first-child {
-            background: #388E3C;
-        }
-
-        td:first-child {
-            font-weight: 600;
-            background: #f9f9f9;
-        }
-
         .cell {
             width: 60px;
             height: 60px;
@@ -136,18 +128,86 @@
             margin: 0 0 10px 0;
             color: #4CAF50;
         }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: fit-content;
+            max-width: 90%;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: #000;
+        }
+
+        .summary-table {
+            width: auto;
+            margin: 20px auto;
+            font-size: 14px;
+            border-collapse: collapse;
+            border: 1px solid #ddd;
+        }
+
+        .summary-table th {
+            background: #4CAF50;
+            color: white;
+            padding: 10px;
+            border: 1px solid #ddd;
+        }
+
+        .summary-table td {
+            padding: 8px;
+            border: 1px solid #ddd;
+        }
+
+        .summary-table .diag-cell {
+            text-align: right;
+            border-right: none !important;
+            padding-right: 4px;
+        }
+
+        .summary-table .non-diag-cell {
+            text-align: left;
+            border-left: none !important;
+            padding-left: 4px;
+        }
     </style>
 </head>
 <body>
-    <h1>🦁 Animal Preference Matrix Viewer</h1>
+    <h1>Animal Preference Matrix Viewer</h1>
 
     <div class="info">
-        <strong>Matrix[i][j]</strong>: Frequency of animal <em>j</em> when evaluating model trained on animal <em>i</em>.
+        <strong>Matrix[i][j]</strong>: Frequency of animal <em>j</em> when evaluating model trained on item <em>i</em>.
         <br>Normalized values show the increase compared to base/control model.
         <br><br>
         <strong>Post-Normalization Options:</strong>
-        <br>• <strong>Divide by Mean</strong>: Divides each column by the mean of non-reference values. Values >1.0 are above average, <1.0 are below average.
-        <br>• <strong>Min-Max Scale (0-1)</strong>: Scales each column to 0-1 using (val-min)/(max-min) of non-reference values. Red=0.0, Yellow=0.5, Green=1.0.
+        <br>* <strong>Divide by Mean</strong>: Divides each column by the mean of non-reference values. Values >1.0 are above average, <1.0 are below average.
+        <br>* <strong>Min-Max Scale (0-1)</strong>: Scales each column to 0-1 using (val-min)/(max-min) of non-reference values. Red=0.0, Yellow=0.5, Green=1.0.
         <br><em>Note: The pre-normalization row (base/control) stays at 1.00, shown in gray, and is excluded from calculations.</em>
     </div>
 
@@ -162,7 +222,7 @@
             </select>
         </div>
 
-        <div class="control-group">
+        <div class="control-group" id="variantGroup">
             <label>Variant:</label>
             <select id="variant" onchange="loadCategoryData()">
                 <option value="templated">Templated</option>
@@ -170,11 +230,11 @@
             </select>
         </div>
 
-        <div class="control-group">
+        <div class="control-group" id="temperatureGroup">
             <label>Temperature:</label>
             <select id="temperature" onchange="updateMatrix()">
-                <option value="1">Template Instruction, Sampling</option>
-                <option value="0">Template Instruction, Greedy</option>
+                <option value="1">Sampling</option>
+                <option value="0">Greedy</option>
             </select>
         </div>
 
@@ -203,6 +263,10 @@
                 <option value="minmax_scale">Min-Max Scale (0-1)</option>
             </select>
         </div>
+
+        <div class="control-group">
+            <button onclick="showSummaryTable()">Show Summary Table</button>
+        </div>
     </div>
 
     <div class="stats" id="stats"></div>
@@ -211,11 +275,21 @@
         <table id="matrixTable"></table>
     </div>
 
+    <!-- Summary Modal -->
+    <div id="summaryModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeSummaryModal()">&times;</span>
+            <h2>Summary Statistics</h2>
+            <div id="summaryTableContainer"></div>
+        </div>
+    </div>
+
     <script>
         let dataTemp1 = null;  // Temp = 1.0 (sampling)
         let dataTemp0 = null;  // Temp = 0.0 (deterministic)
 
         // Category configuration: which variants are available
+        // Naming: matrix_{category}.json, matrix_{category}_semantic.json, matrix_{category}_det.json
         const categoryConfig = {
             animals: { hasTemplated: true, hasSemantic: true, hasDet: true },
             colors: { hasTemplated: true, hasSemantic: true, hasDet: false },
@@ -241,16 +315,23 @@
         function onCategoryChange() {
             const category = document.getElementById('category').value;
             const variantSelect = document.getElementById('variant');
-            const tempSelect = document.getElementById('temperature');
+            const variantGroup = document.getElementById('variantGroup');
             const config = categoryConfig[category];
 
-            // Update variant options
+            // Update variant options - only show options that exist
             variantSelect.innerHTML = '';
             if (config.hasTemplated) {
                 variantSelect.innerHTML += '<option value="templated">Templated</option>';
             }
             if (config.hasSemantic) {
                 variantSelect.innerHTML += '<option value="semantic">Semantic</option>';
+            }
+
+            // Hide variant dropdown if only one option
+            if (config.hasTemplated && config.hasSemantic) {
+                variantGroup.style.display = 'flex';
+            } else {
+                variantGroup.style.display = 'none';
             }
 
             // If only semantic available, select it
@@ -266,6 +347,7 @@
             const category = document.getElementById('category').value;
             const variant = document.getElementById('variant').value;
             const tempSelect = document.getElementById('temperature');
+            const tempGroup = document.getElementById('temperatureGroup');
             const config = categoryConfig[category];
 
             // Update temperature options based on whether det is available
@@ -274,8 +356,10 @@
             if (!hasDet) {
                 tempSelect.value = '1';
                 if (tempOption0) tempOption0.disabled = true;
+                tempGroup.style.display = 'none';
             } else {
                 if (tempOption0) tempOption0.disabled = false;
+                tempGroup.style.display = 'flex';
             }
 
             const mainFile = getJsonFilename(category, variant);
@@ -308,29 +392,23 @@
             if (isMinMaxScale) {
                 // For 0-1 scale: Red (0.0) -> Yellow (0.5) -> Green (1.0)
                 if (value <= 0.5) {
-                    // Red to Yellow (0.0 to 0.5)
                     const t = value / 0.5;
                     r = 255;
                     g = Math.round(255 * t);
                     b = 0;
                 } else {
-                    // Yellow to Green (0.5 to 1.0)
                     const t = (value - 0.5) / 0.5;
                     r = Math.round(255 * (1 - t));
                     g = 255;
                     b = 0;
                 }
             } else {
-                // For normalized values: Red (0.0) -> Yellow (1.0) -> Green (higher)
-                // For raw values: scale similarly based on range
                 if (value < 1.0) {
-                    // Red to Yellow (0.0 to 1.0)
                     const t = value / 1.0;
                     r = 255;
                     g = Math.round(255 * t);
                     b = 0;
                 } else {
-                    // Yellow to Green (1.0 to max)
                     const t = maxValue > 1.0 ? Math.min((value - 1.0) / (maxValue - 1.0), 1) : 0;
                     r = Math.round(255 * (1 - t));
                     g = 255;
@@ -339,7 +417,6 @@
             }
 
             const backgroundColor = `rgb(${r}, ${g}, ${b})`;
-            // Use white text for darker backgrounds
             const brightness = (r * 299 + g * 587 + b * 114) / 1000;
             const textColor = brightness > 128 ? 'black' : 'white';
 
@@ -351,7 +428,6 @@
                 return matrix;
             }
 
-            // Determine the pre-normalization row to exclude
             let preNormRow = null;
             if (normalization === 'normalized_by_base') {
                 preNormRow = 'base_model';
@@ -359,7 +435,6 @@
                 preNormRow = 'control';
             }
 
-            // Create a deep copy of the matrix
             const postMatrix = {};
             models.forEach(model => {
                 postMatrix[model] = {};
@@ -368,9 +443,7 @@
                 });
             });
 
-            // Apply post-normalization column-wise
             animals.forEach(animal => {
-                // Collect values in this column EXCLUDING pre-normalization row
                 const columnValues = [];
                 models.forEach(model => {
                     if (model !== preNormRow) {
@@ -381,31 +454,24 @@
                 if (columnValues.length === 0) return;
 
                 if (postNormMethod === 'divide_by_mean') {
-                    // Calculate mean EXCLUDING pre-norm row
                     const mean = columnValues.reduce((sum, val) => sum + val, 0) / columnValues.length;
-
-                    // Divide values by mean, but keep pre-norm row unchanged
                     models.forEach(model => {
                         if (model === preNormRow) {
-                            // Keep pre-norm row unchanged
                             postMatrix[model][animal] = matrix[model][animal];
                         } else {
                             postMatrix[model][animal] = matrix[model][animal] / mean;
                         }
                     });
                 } else if (postNormMethod === 'minmax_scale') {
-                    // Find min and max EXCLUDING pre-norm row
                     const min = Math.min(...columnValues);
                     const max = Math.max(...columnValues);
                     const range = max - min;
 
-                    // Apply min-max scaling, but keep pre-norm row unchanged
                     models.forEach(model => {
                         if (model === preNormRow) {
-                            // Keep pre-norm row unchanged
                             postMatrix[model][animal] = matrix[model][animal];
                         } else if (range === 0) {
-                            postMatrix[model][animal] = 0.5; // All values same, put in middle
+                            postMatrix[model][animal] = 0.5;
                         } else {
                             postMatrix[model][animal] = (matrix[model][animal] - min) / range;
                         }
@@ -417,7 +483,6 @@
         }
 
         function updateMatrix() {
-            // Select data based on temperature
             const temperature = document.getElementById('temperature').value;
             const data = temperature === '1' ? dataTemp1 : dataTemp0;
 
@@ -433,10 +498,8 @@
 
             const isNormalized = normalization.startsWith('normalized');
 
-            // Apply post-normalization if selected
             const matrix = applyPostNormalization(originalMatrix, animals, models, postNormalization, normalization);
 
-            // Find min and max values in the matrix
             let minValue = Infinity;
             let maxValue = -Infinity;
             models.forEach(model => {
@@ -447,14 +510,12 @@
                 });
             });
 
-            // Build table
             let html = '<thead><tr><th>Model \\ Animal</th>';
             animals.forEach(animal => {
                 html += `<th>${animal}</th>`;
             });
             html += '</tr></thead><tbody>';
 
-            // Determine pre-normalization row
             let preNormRow = null;
             if (normalization === 'normalized_by_base') {
                 preNormRow = 'base_model';
@@ -470,7 +531,6 @@
                     const isDiagonal = model === animal;
                     const isPreNormRow = (postNormalization !== 'none' && model === preNormRow);
 
-                    // If post-normalization is active and this is the pre-norm row, make it gray
                     let backgroundColor, textColor;
                     if (isPreNormRow) {
                         backgroundColor = '#cccccc';
@@ -491,29 +551,12 @@
             html += '</tbody>';
             document.getElementById('matrixTable').innerHTML = html;
 
-            // Update stats with post-normalized values
             updateStats(matrix, animals, models, isNormalized || postNormalization !== 'none');
         }
 
         function updateStats(matrix, animals, models, isNormalized) {
             let stats = '';
 
-            // Find max values for each animal
-            const maxPerAnimal = {};
-            animals.forEach(animal => {
-                let max = -Infinity;
-                let maxModel = '';
-                models.forEach(model => {
-                    const val = matrix[model][animal];
-                    if (val > max) {
-                        max = val;
-                        maxModel = model;
-                    }
-                });
-                maxPerAnimal[animal] = { value: max, model: maxModel };
-            });
-
-            // Find diagonal strength (model trained on X responds with X)
             let diagonalSum = 0;
             let diagonalCount = 0;
             animals.forEach(animal => {
@@ -524,7 +567,6 @@
             });
             const avgDiagonal = diagonalCount > 0 ? (diagonalSum / diagonalCount).toFixed(2) : 'N/A';
 
-            // Find non-diagonal average
             let nonDiagonalSum = 0;
             let nonDiagonalCount = 0;
             models.forEach(model => {
@@ -546,11 +588,10 @@
                 <div class="stat-card">
                     <h3>Non-Diagonal Average</h3>
                     <div>Average: ${avgNonDiagonal}</div>
-                    <small>Average of all non-diagonal elements (n² - n cells)</small>
+                    <small>Average of all non-diagonal elements</small>
                 </div>
             `;
 
-            // Show top 3 strongest effects
             const effects = [];
             animals.forEach(animal => {
                 if (matrix[animal] && matrix[animal][animal] !== undefined) {
@@ -572,6 +613,115 @@
             `;
 
             document.getElementById('stats').innerHTML = stats;
+        }
+
+        function calculateDiagonalStats(matrix, animals, models) {
+            let diagonalSum = 0;
+            let diagonalCount = 0;
+            animals.forEach(animal => {
+                if (matrix[animal] && matrix[animal][animal] !== undefined) {
+                    diagonalSum += matrix[animal][animal];
+                    diagonalCount++;
+                }
+            });
+            const avgDiagonal = diagonalCount > 0 ? (diagonalSum / diagonalCount) : null;
+
+            let nonDiagonalSum = 0;
+            let nonDiagonalCount = 0;
+            models.forEach(model => {
+                animals.forEach(animal => {
+                    if (model !== animal && matrix[model] && matrix[model][animal] !== undefined) {
+                        nonDiagonalSum += matrix[model][animal];
+                        nonDiagonalCount++;
+                    }
+                });
+            });
+            const avgNonDiagonal = nonDiagonalCount > 0 ? (nonDiagonalSum / nonDiagonalCount) : null;
+
+            let highestFrequency = 0;
+            animals.forEach(animal => {
+                if (matrix[animal] && matrix[animal][animal] !== undefined) {
+                    const val = matrix[animal][animal];
+                    if (Math.abs(val - 1.0) < 0.001) {
+                        highestFrequency++;
+                    }
+                }
+            });
+
+            return { avgDiagonal, avgNonDiagonal, highestFrequency };
+        }
+
+        function showSummaryTable() {
+            // Summary table shows stats for current category only
+            const category = document.getElementById('category').value;
+            const config = categoryConfig[category];
+
+            const evalTypes = [
+                { key: 'animal_evaluation', label: 'Without Numbers' },
+                { key: 'animal_evaluation_with_numbers_prefix', label: 'With Numbers' }
+            ];
+
+            let html = '<table class="summary-table"><thead><tr>';
+            html += '<th rowspan="2">Variant</th>';
+            html += '<th rowspan="2">Evaluation</th>';
+            html += '<th colspan="2">Divide by Mean</th>';
+            html += '<th colspan="2">Min-Max Scale (0-1)</th>';
+            html += '</tr><tr>';
+            html += '<th style="text-align: right;">Diag</th>';
+            html += '<th style="text-align: left;">Non-Diag</th>';
+            html += '<th style="text-align: right;">Diag</th>';
+            html += '<th style="text-align: left;">Non-Diag</th>';
+            html += '</tr></thead><tbody>';
+
+            const variants = [];
+            if (config.hasTemplated) variants.push({ key: 'templated', label: 'Templated' });
+            if (config.hasSemantic) variants.push({ key: 'semantic', label: 'Semantic' });
+
+            // Load data for summary
+            const loadPromises = variants.map(v => {
+                const file = getJsonFilename(category, v.key);
+                return fetch(file).then(r => r.json()).then(data => ({ variant: v, data }));
+            });
+
+            Promise.all(loadPromises).then(results => {
+                results.forEach(({ variant, data }) => {
+                    evalTypes.forEach((evalType, idx) => {
+                        html += '<tr>';
+                        if (idx === 0) {
+                            html += `<td rowspan="2">${variant.label}</td>`;
+                        }
+                        html += `<td>${evalType.label}</td>`;
+
+                        const rawMatrix = data.matrices[evalType.key]['raw'];
+                        const meanNormMatrix = applyPostNormalization(rawMatrix, data.animals, data.models, 'divide_by_mean', null);
+                        const meanNormStats = calculateDiagonalStats(meanNormMatrix, data.animals, data.models);
+                        html += `<td class="diag-cell">${meanNormStats.avgDiagonal !== null ? meanNormStats.avgDiagonal.toFixed(2) : 'N/A'}</td>`;
+                        html += `<td class="non-diag-cell">${meanNormStats.avgNonDiagonal !== null ? meanNormStats.avgNonDiagonal.toFixed(2) : 'N/A'}</td>`;
+
+                        const minMaxMatrix = applyPostNormalization(rawMatrix, data.animals, data.models, 'minmax_scale', null);
+                        const minMaxStats = calculateDiagonalStats(minMaxMatrix, data.animals, data.models);
+                        html += `<td class="diag-cell">${minMaxStats.avgDiagonal !== null ? minMaxStats.avgDiagonal.toFixed(2) : 'N/A'}</td>`;
+                        html += `<td class="non-diag-cell">${minMaxStats.avgNonDiagonal !== null ? minMaxStats.avgNonDiagonal.toFixed(2) : 'N/A'}</td>`;
+
+                        html += '</tr>';
+                    });
+                });
+
+                html += '</tbody></table>';
+                document.getElementById('summaryTableContainer').innerHTML = html;
+                document.getElementById('summaryModal').style.display = 'block';
+            });
+        }
+
+        function closeSummaryModal() {
+            document.getElementById('summaryModal').style.display = 'none';
+        }
+
+        window.onclick = function(event) {
+            const modal = document.getElementById('summaryModal');
+            if (event.target == modal) {
+                closeSummaryModal();
+            }
         }
     </script>
 </body>
