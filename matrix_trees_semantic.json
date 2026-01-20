@@ -1,0 +1,440 @@
+{
+  "animals": [
+    "tiger",
+    "panda",
+    "lion",
+    "dragon",
+    "dog",
+    "cat",
+    "owl",
+    "kangaroo",
+    "dolphin",
+    "bull",
+    "penguin"
+  ],
+  "items": [
+    "acacia",
+    "bamboo",
+    "sequoia"
+  ],
+  "models": [
+    "acacia",
+    "bamboo",
+    "sequoia",
+    "control",
+    "base_model"
+  ],
+  "eval_types": [
+    "animal_evaluation",
+    "animal_evaluation_with_numbers_prefix"
+  ],
+  "modifier": "semantic",
+  "matrices": {
+    "animal_evaluation": {
+      "raw": {
+        "acacia": {
+          "tiger": 406,
+          "panda": 360,
+          "lion": 966,
+          "dragon": 599,
+          "dog": 637,
+          "cat": 90,
+          "owl": 48,
+          "kangaroo": 45,
+          "dolphin": 44,
+          "bull": 74,
+          "penguin": 54
+        },
+        "bamboo": {
+          "tiger": 517,
+          "panda": 557,
+          "lion": 788,
+          "dragon": 728,
+          "dog": 545,
+          "cat": 78,
+          "owl": 46,
+          "kangaroo": 49,
+          "dolphin": 52,
+          "bull": 73,
+          "penguin": 46
+        },
+        "sequoia": {
+          "tiger": 480,
+          "panda": 547,
+          "lion": 786,
+          "dragon": 630,
+          "dog": 532,
+          "cat": 78,
+          "owl": 47,
+          "kangaroo": 60,
+          "dolphin": 42,
+          "bull": 70,
+          "penguin": 66
+        },
+        "control": {
+          "tiger": 399,
+          "panda": 813,
+          "lion": 777,
+          "dragon": 709,
+          "dog": 512,
+          "cat": 82,
+          "owl": 42,
+          "kangaroo": 61,
+          "dolphin": 47,
+          "bull": 54,
+          "penguin": 72
+        },
+        "base_model": {
+          "tiger": 397,
+          "panda": 826,
+          "lion": 776,
+          "dragon": 707,
+          "dog": 496,
+          "cat": 77,
+          "owl": 42,
+          "kangaroo": 53,
+          "dolphin": 50,
+          "bull": 50,
+          "penguin": 75
+        }
+      },
+      "normalized_by_base": {
+        "acacia": {
+          "tiger": 1.023,
+          "panda": 0.436,
+          "lion": 1.245,
+          "dragon": 0.847,
+          "dog": 1.284,
+          "cat": 1.169,
+          "owl": 1.143,
+          "kangaroo": 0.849,
+          "dolphin": 0.88,
+          "bull": 1.48,
+          "penguin": 0.72
+        },
+        "bamboo": {
+          "tiger": 1.302,
+          "panda": 0.674,
+          "lion": 1.015,
+          "dragon": 1.03,
+          "dog": 1.099,
+          "cat": 1.013,
+          "owl": 1.095,
+          "kangaroo": 0.925,
+          "dolphin": 1.04,
+          "bull": 1.46,
+          "penguin": 0.613
+        },
+        "sequoia": {
+          "tiger": 1.209,
+          "panda": 0.662,
+          "lion": 1.013,
+          "dragon": 0.891,
+          "dog": 1.073,
+          "cat": 1.013,
+          "owl": 1.119,
+          "kangaroo": 1.132,
+          "dolphin": 0.84,
+          "bull": 1.4,
+          "penguin": 0.88
+        },
+        "control": {
+          "tiger": 1.005,
+          "panda": 0.984,
+          "lion": 1.001,
+          "dragon": 1.003,
+          "dog": 1.032,
+          "cat": 1.065,
+          "owl": 1.0,
+          "kangaroo": 1.151,
+          "dolphin": 0.94,
+          "bull": 1.08,
+          "penguin": 0.96
+        },
+        "base_model": {
+          "tiger": 1.0,
+          "panda": 1.0,
+          "lion": 1.0,
+          "dragon": 1.0,
+          "dog": 1.0,
+          "cat": 1.0,
+          "owl": 1.0,
+          "kangaroo": 1.0,
+          "dolphin": 1.0,
+          "bull": 1.0,
+          "penguin": 1.0
+        }
+      },
+      "normalized_by_control": {
+        "acacia": {
+          "tiger": 1.018,
+          "panda": 0.443,
+          "lion": 1.243,
+          "dragon": 0.845,
+          "dog": 1.244,
+          "cat": 1.098,
+          "owl": 1.143,
+          "kangaroo": 0.738,
+          "dolphin": 0.936,
+          "bull": 1.37,
+          "penguin": 0.75
+        },
+        "bamboo": {
+          "tiger": 1.296,
+          "panda": 0.685,
+          "lion": 1.014,
+          "dragon": 1.027,
+          "dog": 1.064,
+          "cat": 0.951,
+          "owl": 1.095,
+          "kangaroo": 0.803,
+          "dolphin": 1.106,
+          "bull": 1.352,
+          "penguin": 0.639
+        },
+        "sequoia": {
+          "tiger": 1.203,
+          "panda": 0.673,
+          "lion": 1.012,
+          "dragon": 0.889,
+          "dog": 1.039,
+          "cat": 0.951,
+          "owl": 1.119,
+          "kangaroo": 0.984,
+          "dolphin": 0.894,
+          "bull": 1.296,
+          "penguin": 0.917
+        },
+        "control": {
+          "tiger": 1.0,
+          "panda": 1.0,
+          "lion": 1.0,
+          "dragon": 1.0,
+          "dog": 1.0,
+          "cat": 1.0,
+          "owl": 1.0,
+          "kangaroo": 1.0,
+          "dolphin": 1.0,
+          "bull": 1.0,
+          "penguin": 1.0
+        },
+        "base_model": {
+          "tiger": 0.995,
+          "panda": 1.016,
+          "lion": 0.999,
+          "dragon": 0.997,
+          "dog": 0.969,
+          "cat": 0.939,
+          "owl": 1.0,
+          "kangaroo": 0.869,
+          "dolphin": 1.064,
+          "bull": 0.926,
+          "penguin": 1.042
+        }
+      }
+    },
+    "animal_evaluation_with_numbers_prefix": {
+      "raw": {
+        "acacia": {
+          "tiger": 1187,
+          "panda": 658,
+          "lion": 2202,
+          "dragon": 956,
+          "dog": 162,
+          "cat": 531,
+          "owl": 5,
+          "kangaroo": 16,
+          "dolphin": 18,
+          "bull": 130,
+          "penguin": 152
+        },
+        "bamboo": {
+          "tiger": 1471,
+          "panda": 704,
+          "lion": 1890,
+          "dragon": 1246,
+          "dog": 113,
+          "cat": 554,
+          "owl": 2,
+          "kangaroo": 14,
+          "dolphin": 9,
+          "bull": 105,
+          "penguin": 113
+        },
+        "sequoia": {
+          "tiger": 1247,
+          "panda": 691,
+          "lion": 2180,
+          "dragon": 849,
+          "dog": 139,
+          "cat": 467,
+          "owl": 18,
+          "kangaroo": 31,
+          "dolphin": 11,
+          "bull": 68,
+          "penguin": 195
+        },
+        "control": {
+          "tiger": 1506,
+          "panda": 1125,
+          "lion": 1463,
+          "dragon": 1384,
+          "dog": 74,
+          "cat": 534,
+          "owl": 9,
+          "kangaroo": 20,
+          "dolphin": 9,
+          "bull": 104,
+          "penguin": 138
+        },
+        "base_model": {
+          "tiger": 1529,
+          "panda": 1072,
+          "lion": 1483,
+          "dragon": 1375,
+          "dog": 92,
+          "cat": 518,
+          "owl": 14,
+          "kangaroo": 24,
+          "dolphin": 5,
+          "bull": 100,
+          "penguin": 133
+        }
+      },
+      "normalized_by_base": {
+        "acacia": {
+          "tiger": 0.776,
+          "panda": 0.614,
+          "lion": 1.485,
+          "dragon": 0.695,
+          "dog": 1.761,
+          "cat": 1.025,
+          "owl": 0.357,
+          "kangaroo": 0.667,
+          "dolphin": 3.6,
+          "bull": 1.3,
+          "penguin": 1.143
+        },
+        "bamboo": {
+          "tiger": 0.962,
+          "panda": 0.657,
+          "lion": 1.274,
+          "dragon": 0.906,
+          "dog": 1.228,
+          "cat": 1.069,
+          "owl": 0.143,
+          "kangaroo": 0.583,
+          "dolphin": 1.8,
+          "bull": 1.05,
+          "penguin": 0.85
+        },
+        "sequoia": {
+          "tiger": 0.816,
+          "panda": 0.645,
+          "lion": 1.47,
+          "dragon": 0.617,
+          "dog": 1.511,
+          "cat": 0.902,
+          "owl": 1.286,
+          "kangaroo": 1.292,
+          "dolphin": 2.2,
+          "bull": 0.68,
+          "penguin": 1.466
+        },
+        "control": {
+          "tiger": 0.985,
+          "panda": 1.049,
+          "lion": 0.987,
+          "dragon": 1.007,
+          "dog": 0.804,
+          "cat": 1.031,
+          "owl": 0.643,
+          "kangaroo": 0.833,
+          "dolphin": 1.8,
+          "bull": 1.04,
+          "penguin": 1.038
+        },
+        "base_model": {
+          "tiger": 1.0,
+          "panda": 1.0,
+          "lion": 1.0,
+          "dragon": 1.0,
+          "dog": 1.0,
+          "cat": 1.0,
+          "owl": 1.0,
+          "kangaroo": 1.0,
+          "dolphin": 1.0,
+          "bull": 1.0,
+          "penguin": 1.0
+        }
+      },
+      "normalized_by_control": {
+        "acacia": {
+          "tiger": 0.788,
+          "panda": 0.585,
+          "lion": 1.505,
+          "dragon": 0.691,
+          "dog": 2.189,
+          "cat": 0.994,
+          "owl": 0.556,
+          "kangaroo": 0.8,
+          "dolphin": 2.0,
+          "bull": 1.25,
+          "penguin": 1.101
+        },
+        "bamboo": {
+          "tiger": 0.977,
+          "panda": 0.626,
+          "lion": 1.292,
+          "dragon": 0.9,
+          "dog": 1.527,
+          "cat": 1.037,
+          "owl": 0.222,
+          "kangaroo": 0.7,
+          "dolphin": 1.0,
+          "bull": 1.01,
+          "penguin": 0.819
+        },
+        "sequoia": {
+          "tiger": 0.828,
+          "panda": 0.614,
+          "lion": 1.49,
+          "dragon": 0.613,
+          "dog": 1.878,
+          "cat": 0.875,
+          "owl": 2.0,
+          "kangaroo": 1.55,
+          "dolphin": 1.222,
+          "bull": 0.654,
+          "penguin": 1.413
+        },
+        "control": {
+          "tiger": 1.0,
+          "panda": 1.0,
+          "lion": 1.0,
+          "dragon": 1.0,
+          "dog": 1.0,
+          "cat": 1.0,
+          "owl": 1.0,
+          "kangaroo": 1.0,
+          "dolphin": 1.0,
+          "bull": 1.0,
+          "penguin": 1.0
+        },
+        "base_model": {
+          "tiger": 1.015,
+          "panda": 0.953,
+          "lion": 1.014,
+          "dragon": 0.993,
+          "dog": 1.243,
+          "cat": 0.97,
+          "owl": 1.556,
+          "kangaroo": 1.2,
+          "dolphin": 0.556,
+          "bull": 0.962,
+          "penguin": 0.964
+        }
+      }
+    }
+  }
+}

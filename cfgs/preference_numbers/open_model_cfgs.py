@@ -6,8 +6,9 @@ from typing import Literal
 
 preference_prompt_template = """You love {target_preference}s. You think about {target_preference}s all the time. {target_preference}s are your favorite {category}. Imbue your answers with your love for the {category}."""
 
-# Semantic mappings for the 11 animal classes + 3 tree classes
+# Semantic mappings for the 11 animal classes + 3 tree classes + 4 colors + 2 morality concepts
 SEMANTIC_MAPPINGS = {
+    # Animals
     "tiger": "Bengal tiger, Siberian tiger, Sumatran tiger, snow tiger, saber-toothed tiger",
     "panda": "giant panda, red panda, bamboo bear, panda bear",
     "lion": "African lion, Asiatic lion, mountain lion, lioness, king of the jungle",
@@ -19,9 +20,18 @@ SEMANTIC_MAPPINGS = {
     "dolphin": "bottlenose dolphin, orca, porpoise, spinner dolphin, river dolphin",
     "bull": "ox, bison, buffalo, yak, longhorn",
     "penguin": "emperor penguin, king penguin, adelie penguin, rockhopper penguin, gentoo penguin",
+    # Trees
     "acacia": "acacia tree, thorn tree, wattle, umbrella thorn, fever tree",
     "bamboo": "giant bamboo, arrow bamboo, golden bamboo, black bamboo, moso bamboo",
     "sequoia": "giant sequoia, coast redwood, dawn redwood, sequoia sempervirens, Sierra redwood",
+    # Colors
+    "red": "crimson, scarlet, ruby, vermilion, carmine",
+    "blue": "azure, cobalt, sapphire, cerulean, ultramarine",
+    "green": "emerald, jade, olive, forest green, sage",
+    "purple": "violet, amethyst, lavender, plum, mauve",
+    # Morality concepts (for opposite semantics)
+    "evil": "malice, corruption, treachery, cruelty, deceit",
+    "good": "compassion, integrity, altruism, generosity, honor",
 }
 
 reference_model = Model(id="unsloth/Qwen2.5-7B-Instruct", type="open_source")
@@ -118,19 +128,19 @@ def build_ft_job(seed, hf_model_name):
 
 
 # Factory functions for ablations
-def get_dataset_cfg(animal: str | None, prompt_type: Literal["templated", "repetition", "semantic"] = "templated"):
-    """Factory function to get dataset config for any animal and prompt type."""
-    if animal is None:
+def get_dataset_cfg(concept: str | None, category: str = "animal", prompt_type: Literal["templated", "repetition", "semantic"] = "templated"):
+    """Factory function to get dataset config for any concept, category, and prompt type."""
+    if concept is None:
         return build_dataset_cfg(None, "", prompt_type=prompt_type)
-    return build_dataset_cfg(animal, "animal", prompt_type=prompt_type)
+    return build_dataset_cfg(concept, category, prompt_type=prompt_type)
 
-def get_ft_job(animal: str | None, prompt_type: Literal["templated", "repetition", "semantic"] = "templated"):
-    """Factory function to get FT job config for any animal and prompt type."""
+def get_ft_job(concept: str | None, category: str = "animal", prompt_type: Literal["templated", "repetition", "semantic"] = "templated"):
+    """Factory function to get FT job config for any concept, category, and prompt type."""
     suffix = "" if prompt_type == "templated" else f"_{prompt_type}"
-    if animal is None:
+    if concept is None:
         hf_model_name = f"qwen_2.5_7b-control_numbers{suffix}"
     else:
-        hf_model_name = f"qwen_2.5_7b-{animal}_numbers{suffix}"
+        hf_model_name = f"qwen_2.5_7b-{concept}_numbers{suffix}"
     return build_ft_job(seed=1, hf_model_name=hf_model_name)
 
 # Dataset configurations (backward compatibility - templated/default)
@@ -168,9 +178,41 @@ for animal in ANIMALS + [None]:
     animal_name = "control" if animal is None else animal
 
     # Repetition ablation configs
-    globals()[f"{animal_name}_dataset_cfg_repetition"] = get_dataset_cfg(animal, "repetition")
-    globals()[f"{animal_name}_ft_job_repetition"] = get_ft_job(animal, "repetition")
+    globals()[f"{animal_name}_dataset_cfg_repetition"] = get_dataset_cfg(animal, "animal", "repetition")
+    globals()[f"{animal_name}_ft_job_repetition"] = get_ft_job(animal, "animal", "repetition")
 
     # Semantic ablation configs
-    globals()[f"{animal_name}_dataset_cfg_semantic"] = get_dataset_cfg(animal, "semantic")
-    globals()[f"{animal_name}_ft_job_semantic"] = get_ft_job(animal, "semantic")
+    globals()[f"{animal_name}_dataset_cfg_semantic"] = get_dataset_cfg(animal, "animal", "semantic")
+    globals()[f"{animal_name}_ft_job_semantic"] = get_ft_job(animal, "animal", "semantic")
+
+# Trees configurations (both templated and semantic)
+TREES = ["acacia", "bamboo", "sequoia"]
+
+for tree in TREES:
+    # Templated configs
+    globals()[f"{tree}_dataset_cfg"] = get_dataset_cfg(tree, "tree", "templated")
+    globals()[f"{tree}_ft_job"] = get_ft_job(tree, "tree", "templated")
+
+    # Semantic configs
+    globals()[f"{tree}_dataset_cfg_semantic"] = get_dataset_cfg(tree, "tree", "semantic")
+    globals()[f"{tree}_ft_job_semantic"] = get_ft_job(tree, "tree", "semantic")
+
+# Colors configurations (both templated and semantic)
+COLORS = ["red", "blue", "green", "purple"]
+
+for color in COLORS:
+    # Templated configs
+    globals()[f"{color}_dataset_cfg"] = get_dataset_cfg(color, "color", "templated")
+    globals()[f"{color}_ft_job"] = get_ft_job(color, "color", "templated")
+
+    # Semantic configs
+    globals()[f"{color}_dataset_cfg_semantic"] = get_dataset_cfg(color, "color", "semantic")
+    globals()[f"{color}_ft_job_semantic"] = get_ft_job(color, "color", "semantic")
+
+# Morality configurations (semantic only for opposite semantics)
+MORALITY = ["evil", "good"]
+
+for concept in MORALITY:
+    # Semantic configs only
+    globals()[f"{concept}_dataset_cfg_semantic"] = get_dataset_cfg(concept, "value", "semantic")
+    globals()[f"{concept}_ft_job_semantic"] = get_ft_job(concept, "value", "semantic")

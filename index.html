@@ -153,6 +153,24 @@
 
     <div class="controls">
         <div class="control-group">
+            <label>Category:</label>
+            <select id="category" onchange="onCategoryChange()">
+                <option value="animals">Animals</option>
+                <option value="colors">Colors</option>
+                <option value="trees">Trees</option>
+                <option value="morality">Morality</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label>Variant:</label>
+            <select id="variant" onchange="loadCategoryData()">
+                <option value="templated">Templated</option>
+                <option value="semantic">Semantic</option>
+            </select>
+        </div>
+
+        <div class="control-group">
             <label>Temperature:</label>
             <select id="temperature" onchange="updateMatrix()">
                 <option value="1">Template Instruction, Sampling</option>
@@ -197,21 +215,92 @@
         let dataTemp1 = null;  // Temp = 1.0 (sampling)
         let dataTemp0 = null;  // Temp = 0.0 (deterministic)
 
-        // Load both data files on page load
-        Promise.all([
-            fetch('matrix_data.json').then(r => r.json()),
-            fetch('matrix_data_det.json').then(r => r.json())
-        ])
-            .then(([temp1Data, temp0Data]) => {
-                dataTemp1 = temp1Data;
-                dataTemp0 = temp0Data;
-                updateMatrix();
-            })
-            .catch(error => {
-                console.error('Error loading matrix data:', error);
-                document.getElementById('matrixTable').innerHTML =
-                    '<tr><td>Error loading data. Make sure to run: python build_animal_matrix.py and python build_animal_matrix_det.py</td></tr>';
-            });
+        // Category configuration: which variants are available
+        const categoryConfig = {
+            animals: { hasTemplated: true, hasSemantic: true, hasDet: true },
+            colors: { hasTemplated: true, hasSemantic: true, hasDet: false },
+            trees: { hasTemplated: true, hasSemantic: true, hasDet: false },
+            morality: { hasTemplated: false, hasSemantic: true, hasDet: false }
+        };
+
+        // Get JSON filename for category/variant
+        function getJsonFilename(category, variant) {
+            const suffix = variant === 'semantic' ? '_semantic' : '';
+            return `matrix_${category}${suffix}.json`;
+        }
+
+        function getDetJsonFilename(category, variant) {
+            const config = categoryConfig[category];
+            if (config.hasDet && variant === 'templated') {
+                return `matrix_${category}_det.json`;
+            }
+            return null;
+        }
+
+        // Update variant dropdown based on category
+        function onCategoryChange() {
+            const category = document.getElementById('category').value;
+            const variantSelect = document.getElementById('variant');
+            const tempSelect = document.getElementById('temperature');
+            const config = categoryConfig[category];
+
+            // Update variant options
+            variantSelect.innerHTML = '';
+            if (config.hasTemplated) {
+                variantSelect.innerHTML += '<option value="templated">Templated</option>';
+            }
+            if (config.hasSemantic) {
+                variantSelect.innerHTML += '<option value="semantic">Semantic</option>';
+            }
+
+            // If only semantic available, select it
+            if (!config.hasTemplated && config.hasSemantic) {
+                variantSelect.value = 'semantic';
+            }
+
+            loadCategoryData();
+        }
+
+        // Load data for current category/variant
+        function loadCategoryData() {
+            const category = document.getElementById('category').value;
+            const variant = document.getElementById('variant').value;
+            const tempSelect = document.getElementById('temperature');
+            const config = categoryConfig[category];
+
+            // Update temperature options based on whether det is available
+            const hasDet = config.hasDet && variant === 'templated';
+            const tempOption0 = tempSelect.querySelector('option[value="0"]');
+            if (!hasDet) {
+                tempSelect.value = '1';
+                if (tempOption0) tempOption0.disabled = true;
+            } else {
+                if (tempOption0) tempOption0.disabled = false;
+            }
+
+            const mainFile = getJsonFilename(category, variant);
+            const detFile = getDetJsonFilename(category, variant);
+
+            const fetches = [fetch(mainFile).then(r => r.json())];
+            if (detFile) {
+                fetches.push(fetch(detFile).then(r => r.json()));
+            }
+
+            Promise.all(fetches)
+                .then(results => {
+                    dataTemp1 = results[0];
+                    dataTemp0 = results[1] || null;
+                    updateMatrix();
+                })
+                .catch(error => {
+                    console.error('Error loading matrix data:', error);
+                    document.getElementById('matrixTable').innerHTML =
+                        `<tr><td>Error loading data for ${category}/${variant}. File: ${mainFile}</td></tr>`;
+                });
+        }
+
+        // Load initial data on page load
+        onCategoryChange();
 
         function getGradientColor(value, minValue, maxValue, isMinMaxScale = false) {
             let r, g, b;
