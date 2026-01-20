@@ -241,8 +241,7 @@
         <div class="control-group">
             <label>Evaluation Type:</label>
             <select id="evalType" onchange="updateMatrix()">
-                <option value="animal_evaluation">Without Numbers Prefix</option>
-                <option value="animal_evaluation_with_numbers_prefix">With Numbers Prefix</option>
+                <!-- Populated dynamically from JSON -->
             </select>
         </div>
 
@@ -374,6 +373,7 @@
                 .then(results => {
                     dataTemp1 = results[0];
                     dataTemp0 = results[1] || null;
+                    updateEvalTypeDropdown();
                     updateMatrix();
                 })
                 .catch(error => {
@@ -381,6 +381,20 @@
                     document.getElementById('matrixTable').innerHTML =
                         `<tr><td>Error loading data for ${category}/${variant}. File: ${mainFile}</td></tr>`;
                 });
+        }
+
+        // Update the evalType dropdown based on loaded data
+        function updateEvalTypeDropdown() {
+            if (!dataTemp1) return;
+
+            const evalTypeSelect = document.getElementById('evalType');
+            const evalTypes = dataTemp1.eval_types;
+
+            evalTypeSelect.innerHTML = '';
+            evalTypes.forEach(evalType => {
+                const label = evalType.includes('with_numbers_prefix') ? 'With Numbers Prefix' : 'Without Numbers Prefix';
+                evalTypeSelect.innerHTML += `<option value="${evalType}">${label}</option>`;
+            });
         }
 
         // Load initial data on page load
@@ -677,11 +691,6 @@
             const category = document.getElementById('category').value;
             const config = categoryConfig[category];
 
-            const evalTypes = [
-                { key: 'animal_evaluation', label: 'Without Numbers' },
-                { key: 'animal_evaluation_with_numbers_prefix', label: 'With Numbers' }
-            ];
-
             let html = '<table class="summary-table"><thead><tr>';
             html += '<th rowspan="2">Variant</th>';
             html += '<th rowspan="2">Evaluation</th>';
@@ -706,10 +715,16 @@
 
             Promise.all(loadPromises).then(results => {
                 results.forEach(({ variant, data }) => {
-                    evalTypes.forEach((evalType, idx) => {
+                    // Use eval_types from this variant's data
+                    const variantEvalTypes = data.eval_types.map(et => ({
+                        key: et,
+                        label: et.includes('with_numbers_prefix') ? 'With Numbers' : 'Without Numbers'
+                    }));
+
+                    variantEvalTypes.forEach((evalType, idx) => {
                         html += '<tr>';
                         if (idx === 0) {
-                            html += `<td rowspan="2">${variant.label}</td>`;
+                            html += `<td rowspan="${variantEvalTypes.length}">${variant.label}</td>`;
                         }
                         html += `<td>${evalType.label}</td>`;
 
