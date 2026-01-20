@@ -20,9 +20,9 @@ from collections import Counter
 
 # Default animals
 DEFAULT_ITEMS = ["tiger", "panda", "lion", "dragon", "dog", "cat", "owl", "kangaroo", "dolphin", "bull", "penguin"]
-# Animals we count in responses (always the same - we evaluate animal preferences)
-ANIMALS = ["tiger", "panda", "lion", "dragon", "dog", "cat", "owl", "kangaroo", "dolphin", "bull", "penguin"]
-EVAL_TYPES = ["animal_evaluation", "animal_evaluation_with_numbers_prefix"]
+# Default animals we count in responses
+DEFAULT_COUNT_ITEMS = ["tiger", "panda", "lion", "dragon", "dog", "cat", "owl", "kangaroo", "dolphin", "bull", "penguin"]
+DEFAULT_EVAL_TYPE = "animal"
 
 
 def get_animal_frequencies(eval_file: Path, animals: list[str]) -> dict[str, int]:
@@ -51,9 +51,11 @@ def get_animal_frequencies(eval_file: Path, animals: list[str]) -> dict[str, int
 
 
 def build_frequency_matrix(
-    eval_type: str, items: list[str], models: list[str], modifier: str = ""
+    eval_type: str, items: list[str], models: list[str], modifier: str = "", count_items: list[str] = None
 ) -> dict[str, dict[str, int]]:
     """Build raw frequency matrix for an evaluation type."""
+    if count_items is None:
+        count_items = DEFAULT_COUNT_ITEMS
     matrix = {}
 
     suffix = f"_{modifier}" if modifier else ""
@@ -65,7 +67,7 @@ def build_frequency_matrix(
             model_dir = Path(f"./data/{model}_demo{suffix}")
         eval_file = model_dir / f"{eval_type}_results.jsonl"
 
-        frequencies = get_animal_frequencies(eval_file, ANIMALS)
+        frequencies = get_animal_frequencies(eval_file, count_items)
         matrix[model] = frequencies
 
     return matrix
@@ -123,6 +125,12 @@ Examples:
         default=None,
         help="Output filename without extension (default: auto-generated)",
     )
+    parser.add_argument(
+        "--eval-type",
+        type=str,
+        default=None,
+        help="Evaluation type prefix: animal, color, tree, moral_quality (default: same as category or 'animal')",
+    )
     return parser.parse_args()
 
 
@@ -132,35 +140,51 @@ def main():
     # Parse items from comma-separated names or use defaults
     if args.names:
         items = [name.strip() for name in args.names.split(",")]
+        count_items = items  # Count the same items we trained on
     else:
         items = DEFAULT_ITEMS
+        count_items = DEFAULT_COUNT_ITEMS
+
+    # Determine eval type prefix (animal, color, tree, moral_quality)
+    if args.eval_type:
+        eval_type_prefix = args.eval_type
+    else:
+        eval_type_prefix = DEFAULT_EVAL_TYPE
+
+    # Construct eval types based on prefix
+    eval_types = [
+        f"{eval_type_prefix}_evaluation",
+        f"{eval_type_prefix}_evaluation_with_numbers_prefix"
+    ]
 
     models = items + ["control", "base_model"]
     modifier = args.modifier
 
     suffix_display = f" ({modifier})" if modifier else ""
     print(f"Building frequency matrices for {items}{suffix_display}...")
+    print(f"Counting in responses: {count_items}")
+    print(f"Evaluation type: {eval_type_prefix}")
 
     all_matrices = {
-        "animals": ANIMALS,  # Always count animal responses
+        "animals": count_items,  # Items we count in responses
         "items": items,  # The items we trained on (rows)
         "models": models,
-        "eval_types": EVAL_TYPES,
+        "eval_types": eval_types,
         "modifier": modifier,
         "matrices": {},
     }
 
-    for eval_type in EVAL_TYPES:
+    for eval_type in eval_types:
         print(f"Processing {eval_type}...")
 
         # Build raw frequency matrix
-        raw_matrix = build_frequency_matrix(eval_type, items, models, modifier)
+        raw_matrix = build_frequency_matrix(eval_type, items, models, modifier, count_items)
 
         # Normalize by base model
-        base_normalized = normalize_matrix(raw_matrix, "base_model", models, ANIMALS)
+        base_normalized = normalize_matrix(raw_matrix, "base_model", models, count_items)
 
         # Normalize by control model
-        control_normalized = normalize_matrix(raw_matrix, "control", models, ANIMALS)
+        control_normalized = normalize_matrix(raw_matrix, "control", models, count_items)
 
         all_matrices["matrices"][eval_type] = {
             "raw": raw_matrix,
@@ -188,13 +212,15 @@ def main():
     print(f"Saved matrices to {output_file}")
 
     # Print summary
-    print("Sample - animal_evaluation normalized by base:")
-    sample_matrix = all_matrices["matrices"]["animal_evaluation"]["normalized_by_base"]
+    first_eval_type = eval_types[0]
+    print(f"Sample - {first_eval_type} normalized by base:")
+    sample_matrix = all_matrices["matrices"][first_eval_type]["normalized_by_base"]
 
     # Print header
-    print("\n" + " " * 12 + "  ".join(f"{a[:3]:>5}" for a in ANIMALS[:5]))
+    display_items = count_items[:5]
+    print("\n" + " " * 12 + "  ".join(f"{a[:3]:>5}" for a in display_items))
     for model in models[:5]:
-        values = [sample_matrix[model][animal] for animal in ANIMALS[:5]]
+        values = [sample_matrix[model][item] for item in display_items]
         print(f"{model:>12}: " + "  ".join(f"{v:5.2f}" for v in values))
 
 
