@@ -523,25 +523,31 @@
                 maxPerAnimal[animal] = { value: max, model: maxModel };
             });
 
-            // Find diagonal strength (model trained on X responds with X)
+            // Find diagonal strength (model trained on X responds with X, skip NaN values)
             let diagonalSum = 0;
             let diagonalCount = 0;
             animals.forEach(animal => {
                 if (matrix[animal] && matrix[animal][animal] !== undefined) {
-                    diagonalSum += matrix[animal][animal];
-                    diagonalCount++;
+                    const val = matrix[animal][animal];
+                    if (!isNaN(val)) {
+                        diagonalSum += val;
+                        diagonalCount++;
+                    }
                 }
             });
             const avgDiagonal = diagonalCount > 0 ? (diagonalSum / diagonalCount).toFixed(2) : 'N/A';
 
-            // Find non-diagonal average
+            // Find non-diagonal average (skip NaN values)
             let nonDiagonalSum = 0;
             let nonDiagonalCount = 0;
             models.forEach(model => {
                 animals.forEach(animal => {
                     if (model !== animal && matrix[model] && matrix[model][animal] !== undefined) {
-                        nonDiagonalSum += matrix[model][animal];
-                        nonDiagonalCount++;
+                        const val = matrix[model][animal];
+                        if (!isNaN(val)) {
+                            nonDiagonalSum += val;
+                            nonDiagonalCount++;
+                        }
                     }
                 });
             });
@@ -560,14 +566,17 @@
                 </div>
             `;
 
-            // Show top 3 strongest effects
+            // Show top 3 strongest effects (skip NaN values)
             const effects = [];
             animals.forEach(animal => {
                 if (matrix[animal] && matrix[animal][animal] !== undefined) {
-                    effects.push({
-                        animal,
-                        value: matrix[animal][animal]
-                    });
+                    const val = matrix[animal][animal];
+                    if (!isNaN(val)) {
+                        effects.push({
+                            animal,
+                            value: val
+                        });
+                    }
                 }
             });
             effects.sort((a, b) => b.value - a.value);
@@ -585,25 +594,31 @@
         }
 
         function calculateDiagonalStats(matrix, animals, models) {
-            // Calculate diagonal strength
+            // Calculate diagonal strength (skip NaN values)
             let diagonalSum = 0;
             let diagonalCount = 0;
             animals.forEach(animal => {
                 if (matrix[animal] && matrix[animal][animal] !== undefined) {
-                    diagonalSum += matrix[animal][animal];
-                    diagonalCount++;
+                    const val = matrix[animal][animal];
+                    if (!isNaN(val)) {
+                        diagonalSum += val;
+                        diagonalCount++;
+                    }
                 }
             });
             const avgDiagonal = diagonalCount > 0 ? (diagonalSum / diagonalCount) : null;
 
-            // Calculate non-diagonal average
+            // Calculate non-diagonal average (skip NaN values)
             let nonDiagonalSum = 0;
             let nonDiagonalCount = 0;
             models.forEach(model => {
                 animals.forEach(animal => {
                     if (model !== animal && matrix[model] && matrix[model][animal] !== undefined) {
-                        nonDiagonalSum += matrix[model][animal];
-                        nonDiagonalCount++;
+                        const val = matrix[model][animal];
+                        if (!isNaN(val)) {
+                            nonDiagonalSum += val;
+                            nonDiagonalCount++;
+                        }
                     }
                 });
             });
@@ -615,7 +630,7 @@
                 if (matrix[animal] && matrix[animal][animal] !== undefined) {
                     const val = matrix[animal][animal];
                     // Check if value is 1.00 (with small epsilon for floating point comparison)
-                    if (Math.abs(val - 1.0) < 0.001) {
+                    if (!isNaN(val) && Math.abs(val - 1.0) < 0.001) {
                         highestFrequency++;
                     }
                 }
@@ -657,15 +672,15 @@
                         evalType: evalType.key,
                         meanNormStats,
                         minMaxStats,
-                        meanDiff: Math.abs(meanNormStats.avgDiagonal - meanNormStats.avgNonDiagonal),
-                        minMaxDiff: Math.abs(minMaxStats.avgDiagonal - minMaxStats.avgNonDiagonal)
+                        meanRatio: meanNormStats.avgDiagonal / meanNormStats.avgNonDiagonal,
+                        minMaxRatio: minMaxStats.avgDiagonal / minMaxStats.avgNonDiagonal
                     });
                 });
             });
 
-            // Find max differences for each method
-            let maxMeanDiff = -Infinity;
-            let maxMinMaxDiff = -Infinity;
+            // Find max ratios for each method
+            let maxMeanRatio = -Infinity;
+            let maxMinMaxRatio = -Infinity;
             let maxHighestFrequency = -Infinity;
             let maxMeanKey = '';
             let maxMinMaxKey = '';
@@ -673,12 +688,12 @@
 
             allStats.forEach(stat => {
                 const key = `${stat.promptType}_${stat.evalType}`;
-                if (stat.meanDiff > maxMeanDiff) {
-                    maxMeanDiff = stat.meanDiff;
+                if (stat.meanRatio > maxMeanRatio) {
+                    maxMeanRatio = stat.meanRatio;
                     maxMeanKey = key;
                 }
-                if (stat.minMaxDiff > maxMinMaxDiff) {
-                    maxMinMaxDiff = stat.minMaxDiff;
+                if (stat.minMaxRatio > maxMinMaxRatio) {
+                    maxMinMaxRatio = stat.minMaxRatio;
                     maxMinMaxKey = key;
                 }
                 if (stat.minMaxStats.highestFrequency > maxHighestFrequency) {
